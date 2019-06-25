@@ -1,3 +1,5 @@
+from math import floor
+
 import torch
 
 from espnet.nets.pytorch_backend.transformer.embedding import PositionalEncoding
@@ -20,7 +22,8 @@ class Conv2dSubsampling(torch.nn.Module):
             torch.nn.ReLU()
         )
         self.out = torch.nn.Sequential(
-            torch.nn.Linear(odim * (idim // 4), odim),
+            # To derive the input dimension, see https://pytorch.org/docs/stable/nn.html#convolution-layers for example
+            torch.nn.Linear(odim * floor((floor((idim - 3) / 2 + 1) - 3) / 2 + 1), odim),
             PositionalEncoding(odim, dropout_rate)
         )
 
