@@ -4,6 +4,7 @@ import kaldiio
 import numpy as np
 import pytest
 
+from espnet.nets.pytorch_backend.nets_utils import to_torch_tensor
 from espnet.utils.io_utils import LoadInputsAndTargets
 from espnet.utils.io_utils import SoundHDF5File
 from espnet.utils.training.batchfy import make_batchset
@@ -140,3 +141,81 @@ def test_sound_hdf5_file(tmpdir, fmt):
         t, r = f[k]
         assert r == 8000
         np.testing.assert_array_equal(t, v)
+
+
+def test_to_torch_tensor():
+    x = np.random.randn(10, 10)
+    t = to_torch_tensor(x)
+    assert isinstance(t, torch.Tensor)
+    assert tuple(t.shape) == tuple(x.shape)
+
+    t = to_torch_tensor(t)
+    assert isinstance(t, torch.Tensor)
+    assert tuple(t.shape) == tuple(x.shape)
+
+    t = {'real': x, 'imag': x}
+    t = to_torch_tensor(t)
+    assert isinstance(t, ComplexTensor)
+    assert tuple(t.shape) == tuple(x.shape)
+
+
+@pytest.mark.parametrize('typ', ['ctc', 'wer', 'cer', 'all'])
+def test_error_calculator(tmpdir, typ):
+    from espnet.nets.e2e_asr_common import ErrorCalculator
+    space = "<space>"
+    blank = "<blank>"
+    char_list = [blank, space, 'a', 'e', 'i', 'o', 'u']
+    ys_pad = [np.random.randint(0, len(char_list), x) for x in range(120, 150, 5)]
+    ys_hat = [np.random.randint(0, len(char_list), x) for x in range(120, 150, 5)]
+    if typ == 'ctc':
+        cer, wer = False, False
+    elif typ == 'wer':
+        cer, wer = False, True
+    elif typ == 'cer':
+        cer, wer = True, False
+    else:
+        cer, wer = True, True
+
+    ec = ErrorCalculator(char_list, space, blank,
+                         cer, wer)
+
+    if typ == 'ctc':
+        cer_ctc_val = ec(ys_pad, ys_hat, is_ctc=True)
+        _cer, _wer = ec(ys_pad, ys_hat)
+        assert cer_ctc_val is not None
+        assert _cer is None
+        assert _wer is None
+    elif typ == 'wer':
+        _cer, _wer = ec(ys_pad, ys_hat)
+        assert _cer is None
+        assert _wer is not None
+    elif typ == 'cer':
+        _cer, _wer = ec(ys_pad, ys_hat)
+        assert _cer is not None
+        assert _wer is None
+    else:
+        cer_ctc_val = ec(ys_pad, ys_hat, is_ctc=True)
+        _cer, _wer = ec(ys_pad, ys_hat)
+        assert cer_ctc_val is not None
+        assert _cer is not None
+        assert _wer is not None
+
+
+def test_error_calculator_nospace(tmpdir):
+    from espnet.nets.e2e_asr_common import ErrorCalculator
+    space = "<space>"
+    blank = "<blank>"
+    char_list = [blank, 'a', 'e', 'i', 'o', 'u']
+    ys_pad = [np.random.randint(0, len(char_list), x) for x in range(120, 150, 5)]
+    ys_hat = [np.random.randint(0, len(char_list), x) for x in range(120, 150, 5)]
+    cer, wer = True, True
+
+    ec = ErrorCalculator(char_list, space, blank,
+                         cer, wer)
+
+    cer_ctc_val = ec(ys_pad, ys_hat, is_ctc=True)
+    _cer, _wer = ec(ys_pad, ys_hat)
+    assert cer_ctc_val is not None
+    assert _cer is not None
+    assert _wer is not None
+>>>>>>> 36f779ac... Revert namedtuple to dict

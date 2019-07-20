@@ -150,7 +150,7 @@ def index_select_lm_state(rnnlm_state, dim, vidx):
     return new_state
 
 
-def to_torch_tensor(x: Union[np.ndarray, torch.Tensor, ComplexTensor]) \
+def to_torch_tensor(x: Union[torch.Tensor, ComplexTensor, dict]):
         -> Union[torch.Tensor, ComplexTensor]:
     """Change to torch.Tensor or ComplexTensor from numpy.ndarray
 
@@ -176,11 +176,10 @@ def to_torch_tensor(x: Union[np.ndarray, torch.Tensor, ComplexTensor]) \
         else:
             return torch.from_numpy(x)
 
-    # If {'real': ..., 'imag': ...}, convert to ComplexTensor
     elif isinstance(x, dict):
-        if 'real' not in x or 'imag' not in x:
-            raise ValueError("has 'real' and 'imag' keys: {}".format(list(x)))
-        # Relative importing because of using python3 syntax
+        if set(x) != {'real', 'imag'}:
+            raise ValueError(
+                'Requires a dict like {"real": ndarray, "imag": ndarray}')
         return ComplexTensor(x['real'], x['imag'])
 
     # If torch.Tensor, as it is
@@ -188,10 +187,6 @@ def to_torch_tensor(x: Union[np.ndarray, torch.Tensor, ComplexTensor]) \
         return x
 
     else:
-        error = ("x must be numpy.ndarray, torch.Tensor or a dict like "
-                 "{{'real': torch.Tensor, 'imag': torch.Tensor}}, "
-                 "but got {}".format(type(x)))
-        if isinstance(x, ComplexTensor):
-            return x
-        else:
-            raise ValueError(error)
+        raise ValueError(
+            f"x must be numpy.ndarray, torch.Tensor, or dict. "
+            f"but got {type(x)}")
