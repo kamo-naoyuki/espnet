@@ -63,24 +63,19 @@ def make_transformer_args(**kwargs):
         num_layers_applied_guided_attn=2,
         guided_attn_loss_sigma=0.4,
         guided_attn_loss_lambda=1.0,
-        modules_applied_guided_attn=["encoder", "decoder", "encoder-decoder"]
+        modules_applied_guided_attn=["encoder", "decoder", "encoder-decoder"],
     )
     defaults.update(kwargs)
     return defaults
 
 
 def make_inference_args(**kwargs):
-    defaults = dict(
-        threshold=0.5,
-        maxlenratio=5.0,
-        minlenratio=0.0
-    )
+    defaults = dict(threshold=0.5, maxlenratio=5.0, minlenratio=0.0)
     defaults.update(kwargs)
     return defaults
 
 
-def prepare_inputs(idim, odim, ilens, olens, spk_embed_dim=None,
-                   device=torch.device('cpu')):
+def prepare_inputs(idim, odim, ilens, olens, spk_embed_dim=None, device=torch.device("cpu")):
     xs = [np.random.randint(0, idim, l) for l in ilens]
     ys = [np.random.randn(l, odim) for l in olens]
     ilens = torch.LongTensor(ilens).to(device)
@@ -89,7 +84,7 @@ def prepare_inputs(idim, odim, ilens, olens, spk_embed_dim=None,
     ys = pad_list([torch.from_numpy(y).float() for y in ys], 0).to(device)
     labels = ys.new_zeros(ys.size(0), ys.size(1))
     for i, l in enumerate(olens):
-        labels[i, l - 1:] = 1
+        labels[i, l - 1 :] = 1
     batch = {
         "xs": xs,
         "ilens": ilens,
@@ -105,7 +100,8 @@ def prepare_inputs(idim, odim, ilens, olens, spk_embed_dim=None,
 
 
 @pytest.mark.parametrize(
-    "model_dict", [
+    "model_dict",
+    [
         ({}),
         ({"use_masking": False}),
         ({"spk_embed_dim": 16, "spk_embed_integration_type": "concat"}),
@@ -132,7 +128,8 @@ def prepare_inputs(idim, odim, ilens, olens, spk_embed_dim=None,
         ({"use_guided_attn_loss": True, "num_heads_applied_guided_attn": -1}),
         ({"use_guided_attn_loss": True, "num_layers_applied_guided_attn": -1}),
         ({"use_guided_attn_loss": True, "modules_applied_guided_attn": ["encoder"], "elayers": 2, "dlayers": 3}),
-    ])
+    ],
+)
 def test_transformer_trainable_and_decodable(model_dict):
     # make args
     model_args = make_transformer_args(**model_dict)
@@ -167,13 +164,16 @@ def test_transformer_trainable_and_decodable(model_dict):
             spemb = None
         else:
             spemb = batch["spembs"][0]
-        model.inference(batch["xs"][0][:batch["ilens"][0]], Namespace(**inference_args), spemb=spemb)
+        model.inference(
+            batch["xs"][0][: batch["ilens"][0]], Namespace(**inference_args), spemb=spemb,
+        )
         model.calculate_all_attentions(**batch)
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="gpu required")
 @pytest.mark.parametrize(
-    "model_dict", [
+    "model_dict",
+    [
         ({}),
         ({"spk_embed_dim": 16, "spk_embed_integration_type": "concat"}),
         ({"spk_embed_dim": 16, "spk_embed_integration_type": "add"}),
@@ -187,7 +187,8 @@ def test_transformer_trainable_and_decodable(model_dict):
         ({"encoder_concat_after": True, "decoder_concat_after": True}),
         ({"use_masking": False}),
         ({"use_masking": False, "use_weighted_masking": True}),
-    ])
+    ],
+)
 def test_transformer_gpu_trainable_and_decodable(model_dict):
     # make args
     model_args = make_transformer_args(**model_dict)
@@ -197,7 +198,7 @@ def test_transformer_gpu_trainable_and_decodable(model_dict):
     odim = 10
     ilens = [10, 5]
     olens = [20, 15]
-    device = torch.device('cuda')
+    device = torch.device("cuda")
     batch = prepare_inputs(idim, odim, ilens, olens, model_args["spk_embed_dim"], device=device)
 
     # define model
@@ -223,13 +224,16 @@ def test_transformer_gpu_trainable_and_decodable(model_dict):
             spemb = None
         else:
             spemb = batch["spembs"][0]
-        model.inference(batch["xs"][0][:batch["ilens"][0]], Namespace(**inference_args), spemb=spemb)
+        model.inference(
+            batch["xs"][0][: batch["ilens"][0]], Namespace(**inference_args), spemb=spemb,
+        )
         model.calculate_all_attentions(**batch)
 
 
 @pytest.mark.skipif(torch.cuda.device_count() < 2, reason="multi gpu required")
 @pytest.mark.parametrize(
-    "model_dict", [
+    "model_dict",
+    [
         ({}),
         ({"spk_embed_dim": 16, "spk_embed_integration_type": "concat"}),
         ({"spk_embed_dim": 16, "spk_embed_integration_type": "add"}),
@@ -243,7 +247,8 @@ def test_transformer_gpu_trainable_and_decodable(model_dict):
         ({"encoder_concat_after": True, "decoder_concat_after": True}),
         ({"use_masking": False}),
         ({"use_masking": False, "use_weighted_masking": True}),
-    ])
+    ],
+)
 def test_transformer_multi_gpu_trainable(model_dict):
     # make args
     model_args = make_transformer_args(**model_dict)
@@ -253,7 +258,7 @@ def test_transformer_multi_gpu_trainable(model_dict):
     odim = 10
     ilens = [10, 5]
     olens = [20, 15]
-    device = torch.device('cuda')
+    device = torch.device("cuda")
     batch = prepare_inputs(idim, odim, ilens, olens, model_args["spk_embed_dim"], device=device)
 
     # define model
@@ -276,10 +281,7 @@ def test_transformer_multi_gpu_trainable(model_dict):
         assert model.module.decoder.embed[1].alpha.grad is not None
 
 
-@pytest.mark.parametrize(
-    "model_dict", [
-        ({}),
-    ])
+@pytest.mark.parametrize("model_dict", [({})])
 def test_attention_masking(model_dict):
     # make args
     model_args = make_transformer_args(**model_dict)
@@ -296,7 +298,7 @@ def test_attention_masking(model_dict):
 
     # test encoder self-attention
     xs = model.encoder.embed(batch["xs"])
-    xs[1, ilens[1]:] = float("nan")
+    xs[1, ilens[1] :] = float("nan")
     x_masks = model._source_mask(batch["ilens"])
     a = model.encoder.encoders[0].self_attn
     a(xs, xs, xs, x_masks)
@@ -308,7 +310,7 @@ def test_attention_masking(model_dict):
 
     # test encoder-decoder attention
     ys = model.decoder.embed(batch["ys"])
-    ys[1, olens[1]:] = float("nan")
+    ys[1, olens[1] :] = float("nan")
     xy_masks = model._source_to_target_mask(batch["ilens"], batch["olens"])
     a = model.decoder.decoders[0].src_attn
     a(ys, xs, xs, xy_masks)
@@ -320,7 +322,7 @@ def test_attention_masking(model_dict):
 
     # test decoder self-attention
     ys = model.decoder.embed(batch["ys"])
-    ys[1, olens[1]:] = float("nan")
+    ys[1, olens[1] :] = float("nan")
     y_masks = model._target_mask(batch["olens"])
     a = model.decoder.decoders[0].self_attn
     a(ys, ys, ys, y_masks)
@@ -332,7 +334,8 @@ def test_attention_masking(model_dict):
 
 
 @pytest.mark.parametrize(
-    "model_dict", [
+    "model_dict",
+    [
         ({}),
         ({"reduction_factor": 3}),
         ({"reduction_factor": 4}),
@@ -340,7 +343,8 @@ def test_attention_masking(model_dict):
         ({"encoder_normalize_before": False, "decoder_normalize_before": False}),
         ({"decoder_concat_after": True}),
         ({"encoder_concat_after": True, "decoder_concat_after": True}),
-    ])
+    ],
+)
 def test_forward_and_inference_are_equal(model_dict):
     # make args
     model_args = make_transformer_args(dprenet_dropout_rate=0.0, **model_dict)
@@ -366,7 +370,7 @@ def test_forward_and_inference_are_equal(model_dict):
         x_masks = model._source_mask(ilens)
         hs_fp, _ = model.encoder(xs, x_masks)
         if model.reduction_factor > 1:
-            ys_in = ys[:, model.reduction_factor - 1::model.reduction_factor]
+            ys_in = ys[:, model.reduction_factor - 1 :: model.reduction_factor]
             olens_in = olens.new([olen // model.reduction_factor for olen in olens])
         else:
             ys_in, olens_in = ys, olens
@@ -387,8 +391,7 @@ def test_forward_and_inference_are_equal(model_dict):
         # this is the inferene calculation but we use groundtruth to check the behavior
         ys_in_ = ys_in[0, idx].view(1, 1, model.odim)
         np.testing.assert_array_equal(
-            ys_in_.new_zeros(1, 1, model.odim).detach().cpu().numpy(),
-            ys_in_.detach().cpu().numpy(),
+            ys_in_.new_zeros(1, 1, model.odim).detach().cpu().numpy(), ys_in_.detach().cpu().numpy(),
         )
         outs, probs = [], []
         while True:
@@ -411,14 +414,11 @@ def test_forward_and_inference_are_equal(model_dict):
 
         # check both are equal
         np.testing.assert_array_almost_equal(
-            hs_fp.detach().cpu().numpy(),
-            hs_ir.detach().cpu().numpy(),
+            hs_fp.detach().cpu().numpy(), hs_ir.detach().cpu().numpy(),
         )
         np.testing.assert_array_almost_equal(
-            after_outs.squeeze(0).detach().cpu().numpy(),
-            outs.detach().cpu().numpy(),
+            after_outs.squeeze(0).detach().cpu().numpy(), outs.detach().cpu().numpy(),
         )
         np.testing.assert_array_almost_equal(
-            torch.sigmoid(logits.squeeze(0)).detach().cpu().numpy(),
-            probs.detach().cpu().numpy(),
+            torch.sigmoid(logits.squeeze(0)).detach().cpu().numpy(), probs.detach().cpu().numpy(),
         )

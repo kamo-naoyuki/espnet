@@ -47,13 +47,13 @@ class Reporter(chainer.Chain):
 
     def report(self, loss_ctc, loss_att, acc, cer, wer, mtl_loss):
         """Define reporter."""
-        reporter.report({'loss_ctc': loss_ctc}, self)
-        reporter.report({'loss_att': loss_att}, self)
-        reporter.report({'acc': acc}, self)
-        reporter.report({'cer': cer}, self)
-        reporter.report({'wer': wer}, self)
-        logging.info('mtl loss:' + str(mtl_loss))
-        reporter.report({'loss': mtl_loss}, self)
+        reporter.report({"loss_ctc": loss_ctc}, self)
+        reporter.report({"loss_att": loss_att}, self)
+        reporter.report({"acc": acc}, self)
+        reporter.report({"cer": cer}, self)
+        reporter.report({"wer": wer}, self)
+        logging.info("mtl loss:" + str(mtl_loss))
+        reporter.report({"loss": mtl_loss}, self)
 
 
 class PIT(object):
@@ -68,7 +68,14 @@ class PIT(object):
         if self.num_spkrs == 2:
             self.perm_choices = [[0, 1], [1, 0]]
         elif self.num_spkrs == 3:
-            self.perm_choices = [[0, 1, 2], [0, 2, 1], [1, 2, 0], [1, 0, 2], [2, 0, 1], [2, 1, 0]]
+            self.perm_choices = [
+                [0, 1, 2],
+                [0, 2, 1],
+                [1, 2, 0],
+                [1, 0, 2],
+                [2, 0, 1],
+                [2, 1, 0],
+            ]
         else:
             raise ValueError
 
@@ -84,15 +91,21 @@ class PIT(object):
 
         """
         if self.num_spkrs == 2:
-            score_perms = torch.stack([loss[0] + loss[3],
-                                       loss[1] + loss[2]]) / self.num_spkrs
+            score_perms = torch.stack([loss[0] + loss[3], loss[1] + loss[2]]) / self.num_spkrs
         elif self.num_spkrs == 3:
-            score_perms = torch.stack([loss[0] + loss[4] + loss[8],
-                                       loss[0] + loss[5] + loss[7],
-                                       loss[1] + loss[5] + loss[6],
-                                       loss[1] + loss[3] + loss[8],
-                                       loss[2] + loss[3] + loss[7],
-                                       loss[2] + loss[4] + loss[6]]) / self.num_spkrs
+            score_perms = (
+                torch.stack(
+                    [
+                        loss[0] + loss[4] + loss[8],
+                        loss[0] + loss[5] + loss[7],
+                        loss[1] + loss[5] + loss[6],
+                        loss[1] + loss[3] + loss[8],
+                        loss[2] + loss[3] + loss[7],
+                        loss[2] + loss[4] + loss[6],
+                    ]
+                )
+                / self.num_spkrs
+            )
 
         perm_loss, min_idx = torch.min(score_perms, 0)
         permutation = self.perm_choices[min_idx]
@@ -140,11 +153,17 @@ class E2E(E2E_ASR, ASRInterface, torch.nn.Module):
         """Add arguments for multi-speaker encoder."""
         group = parser.add_argument_group("E2E encoder setting for multi-speaker")
         # asr-mix encoder
-        group.add_argument('--spa', action='store_true',
-                           help='Enable speaker parallel attention for multi-speaker speech recognition task.')
-        group.add_argument('--elayers-sd', default=4, type=int,
-                           help='Number of speaker differentiate encoder layers'
-                                'for multi-speaker speech recognition task.')
+        group.add_argument(
+            "--spa",
+            action="store_true",
+            help="Enable speaker parallel attention for multi-speaker speech recognition task.",
+        )
+        group.add_argument(
+            "--elayers-sd",
+            default=4,
+            type=int,
+            help="Number of speaker differentiate encoder layers" "for multi-speaker speech recognition task.",
+        )
         return parser
 
     def __init__(self, idim, odim, args):
@@ -174,25 +193,21 @@ class E2E(E2E_ASR, ASRInterface, torch.nn.Module):
             for j in range(min(args.elayers_sd + args.elayers + 1, len(ss))):
                 subsample[j] = int(ss[j])
         else:
-            logging.warning(
-                'Subsampling is not performed for vgg*. It is performed in max pooling layers at CNN.')
-        logging.info('subsample: ' + ' '.join([str(x) for x in subsample]))
+            logging.warning("Subsampling is not performed for vgg*. It is performed in max pooling layers at CNN.")
+        logging.info("subsample: " + " ".join([str(x) for x in subsample]))
         self.subsample = subsample
 
         # label smoothing info
         if args.lsm_type and os.path.isfile(args.train_json):
             logging.info("Use label smoothing with " + args.lsm_type)
-            labeldist = label_smoothing_dist(odim, args.lsm_type,
-                                             transcript=args.train_json)
+            labeldist = label_smoothing_dist(odim, args.lsm_type, transcript=args.train_json)
         else:
             labeldist = None
 
         if getattr(args, "use_frontend", False):  # use getattr to keep compatibility
             # Relative importing because of using python3 syntax
-            from espnet.nets.pytorch_backend.frontends.feature_transform \
-                import feature_transform_for
-            from espnet.nets.pytorch_backend.frontends.frontend \
-                import frontend_for
+            from espnet.nets.pytorch_backend.frontends.feature_transform import feature_transform_for
+            from espnet.nets.pytorch_backend.frontends.frontend import frontend_for
 
             self.frontend = frontend_for(args, idim)
             self.feature_transform = feature_transform_for(args, (idim - 1) * 2)
@@ -214,12 +229,19 @@ class E2E(E2E_ASR, ASRInterface, torch.nn.Module):
         self.init_like_chainer()
 
         # options for beam search
-        if 'report_cer' in vars(args) and (args.report_cer or args.report_wer):
-            recog_args = {'beam_size': args.beam_size, 'penalty': args.penalty,
-                          'ctc_weight': args.ctc_weight, 'maxlenratio': args.maxlenratio,
-                          'minlenratio': args.minlenratio, 'lm_weight': args.lm_weight,
-                          'rnnlm': args.rnnlm, 'nbest': args.nbest,
-                          'space': args.sym_space, 'blank': args.sym_blank}
+        if "report_cer" in vars(args) and (args.report_cer or args.report_wer):
+            recog_args = {
+                "beam_size": args.beam_size,
+                "penalty": args.penalty,
+                "ctc_weight": args.ctc_weight,
+                "maxlenratio": args.maxlenratio,
+                "minlenratio": args.minlenratio,
+                "lm_weight": args.lm_weight,
+                "rnnlm": args.rnnlm,
+                "nbest": args.nbest,
+                "space": args.sym_space,
+                "blank": args.sym_blank,
+            }
 
             self.recog_args = argparse.Namespace(**recog_args)
             self.report_cer = args.report_cer
@@ -243,6 +265,7 @@ class E2E(E2E_ASR, ASRInterface, torch.nn.Module):
         - EmbedID.W ~ Normal(0, 1)
         - LSTM.upward.b[forget_gate_range] = 1 (but not used in NStepLSTM)
         """
+
         def lecun_normal_init_parameters(module):
             for p in module.parameters():
                 data = p.data
@@ -252,14 +275,14 @@ class E2E(E2E_ASR, ASRInterface, torch.nn.Module):
                 elif data.dim() == 2:
                     # linear weight
                     n = data.size(1)
-                    stdv = 1. / math.sqrt(n)
+                    stdv = 1.0 / math.sqrt(n)
                     data.normal_(0, stdv)
                 elif data.dim() == 4:
                     # conv weight
                     n = data.size(1)
                     for k in data.size()[2:]:
                         n *= k
-                    stdv = 1. / math.sqrt(n)
+                    stdv = 1.0 / math.sqrt(n)
                     data.normal_(0, stdv)
                 else:
                     raise NotImplementedError
@@ -267,7 +290,7 @@ class E2E(E2E_ASR, ASRInterface, torch.nn.Module):
         def set_forget_bias_to_one(bias):
             n = bias.size(0)
             start, end = n // 4, n // 2
-            bias.data[start:end].fill_(1.)
+            bias.data[start:end].fill_(1.0)
 
         lecun_normal_init_parameters(self)
         # exceptions
@@ -319,12 +342,15 @@ class E2E(E2E_ASR, ASRInterface, torch.nn.Module):
                 loss_ctc = torch.mean(self.ctc(hs_pad, hlens, ys_pad))
             else:  # multi-speaker input xs_pad
                 ys_pad = ys_pad.transpose(0, 1)  # (num_spkrs, B, Lmax)
-                loss_ctc_perm = torch.stack([self.ctc(hs_pad[i // self.num_spkrs],
-                                                      hlens[i // self.num_spkrs],
-                                                      ys_pad[i % self.num_spkrs])
-                                             for i in range(self.num_spkrs ** 2)], dim=1)  # (B, num_spkrs^2)
+                loss_ctc_perm = torch.stack(
+                    [
+                        self.ctc(hs_pad[i // self.num_spkrs], hlens[i // self.num_spkrs], ys_pad[i % self.num_spkrs],)
+                        for i in range(self.num_spkrs ** 2)
+                    ],
+                    dim=1,
+                )  # (B, num_spkrs^2)
                 loss_ctc, min_perm = self.pit.pit_process(loss_ctc_perm)
-                logging.info('ctc loss:' + str(float(loss_ctc)))
+                logging.info("ctc loss:" + str(float(loss_ctc)))
 
         # 3. attention loss
         if self.mtlalpha == 1:
@@ -352,11 +378,14 @@ class E2E(E2E_ASR, ASRInterface, torch.nn.Module):
                 lpz = None
 
             word_eds, char_eds, word_ref_lens, char_ref_lens = [], [], [], []
-            nbest_hyps = [self.dec.recognize_beam_batch(hs_pad[i], torch.tensor(hlens[i]), lpz[i],
-                                                        self.recog_args, self.char_list, self.rnnlm, strm_idx=i)
-                          for i in range(self.num_spkrs)]
+            nbest_hyps = [
+                self.dec.recognize_beam_batch(
+                    hs_pad[i], torch.tensor(hlens[i]), lpz[i], self.recog_args, self.char_list, self.rnnlm, strm_idx=i,
+                )
+                for i in range(self.num_spkrs)
+            ]
             # remove <sos> and <eos>
-            y_hats = [[nbest_hyp[0]['yseq'][1:-1] for nbest_hyp in nbest_hyps[i]] for i in range(self.num_spkrs)]
+            y_hats = [[nbest_hyp[0]["yseq"][1:-1] for nbest_hyp in nbest_hyps[i]] for i in range(self.num_spkrs)]
             for i in range(len(y_hats[0])):
                 hyp_words = []
                 hyp_chars = []
@@ -368,24 +397,28 @@ class E2E(E2E_ASR, ASRInterface, torch.nn.Module):
 
                     seq_hat = [self.char_list[int(idx)] for idx in y_hat if int(idx) != -1]
                     seq_true = [self.char_list[int(idx)] for idx in y_true if int(idx) != -1]
-                    seq_hat_text = "".join(seq_hat).replace(self.recog_args.space, ' ')
-                    seq_hat_text = seq_hat_text.replace(self.recog_args.blank, '')
-                    seq_true_text = "".join(seq_true).replace(self.recog_args.space, ' ')
+                    seq_hat_text = "".join(seq_hat).replace(self.recog_args.space, " ")
+                    seq_hat_text = seq_hat_text.replace(self.recog_args.blank, "")
+                    seq_true_text = "".join(seq_true).replace(self.recog_args.space, " ")
 
                     hyp_words.append(seq_hat_text.split())
                     ref_words.append(seq_true_text.split())
-                    hyp_chars.append(seq_hat_text.replace(' ', ''))
-                    ref_chars.append(seq_true_text.replace(' ', ''))
+                    hyp_chars.append(seq_hat_text.replace(" ", ""))
+                    ref_chars.append(seq_true_text.replace(" ", ""))
 
-                tmp_word_ed = [editdistance.eval(hyp_words[ns // self.num_spkrs], ref_words[ns % self.num_spkrs])
-                               for ns in range(self.num_spkrs ** 2)]  # h1r1,h1r2,h2r1,h2r2
-                tmp_char_ed = [editdistance.eval(hyp_chars[ns // self.num_spkrs], ref_chars[ns % self.num_spkrs])
-                               for ns in range(self.num_spkrs ** 2)]  # h1r1,h1r2,h2r1,h2r2
+                tmp_word_ed = [
+                    editdistance.eval(hyp_words[ns // self.num_spkrs], ref_words[ns % self.num_spkrs])
+                    for ns in range(self.num_spkrs ** 2)
+                ]  # h1r1,h1r2,h2r1,h2r2
+                tmp_char_ed = [
+                    editdistance.eval(hyp_chars[ns // self.num_spkrs], ref_chars[ns % self.num_spkrs])
+                    for ns in range(self.num_spkrs ** 2)
+                ]  # h1r1,h1r2,h2r1,h2r2
 
                 word_eds.append(self.pit.min_pit_sample(torch.tensor(tmp_word_ed))[0])
                 word_ref_lens.append(len(sum(ref_words, [])))
                 char_eds.append(self.pit.min_pit_sample(torch.tensor(tmp_char_ed))[0])
-                char_ref_lens.append(len(''.join(ref_chars)))
+                char_ref_lens.append(len("".join(ref_chars)))
 
             wer = 0.0 if not self.report_wer else float(sum(word_eds)) / sum(word_ref_lens)
             cer = 0.0 if not self.report_cer else float(sum(char_eds)) / sum(char_ref_lens)
@@ -408,7 +441,7 @@ class E2E(E2E_ASR, ASRInterface, torch.nn.Module):
         if loss_data < CTC_LOSS_THRESHOLD and not math.isnan(loss_data):
             self.reporter.report(loss_ctc_data, loss_att_data, acc, cer, wer, loss_data)
         else:
-            logging.warning('loss (=%f) is not correct', loss_data)
+            logging.warning("loss (=%f) is not correct", loss_data)
         return self.loss
 
     def recognize(self, x, recog_args, char_list, rnnlm=None):
@@ -426,7 +459,7 @@ class E2E(E2E_ASR, ASRInterface, torch.nn.Module):
         ilens = [x.shape[0]]
 
         # subsample frame
-        x = x[::self.subsample[0], :]
+        x = x[:: self.subsample[0], :]
         h = to_device(self, to_torch_tensor(x).float())
         # make a utt list (1) to use the same interface for encoder
         hs = h.contiguous().unsqueeze(0)
@@ -456,8 +489,10 @@ class E2E(E2E_ASR, ASRInterface, torch.nn.Module):
 
         # 2. decoder
         # decode the first utterance
-        y = [self.dec.recognize_beam(hs[i][0], lpz[i], recog_args, char_list, rnnlm, strm_idx=i)
-             for i in range(self.num_spkrs)]
+        y = [
+            self.dec.recognize_beam(hs[i][0], lpz[i], recog_args, char_list, rnnlm, strm_idx=i)
+            for i in range(self.num_spkrs)
+        ]
 
         if prev:
             self.train()
@@ -478,7 +513,7 @@ class E2E(E2E_ASR, ASRInterface, torch.nn.Module):
         ilens = np.fromiter((xx.shape[0] for xx in xs), dtype=np.int64)
 
         # subsample frame
-        xs = [xx[::self.subsample[0], :] for xx in xs]
+        xs = [xx[:: self.subsample[0], :] for xx in xs]
         xs = [to_device(self, to_torch_tensor(xx).float()) for xx in xs]
         xs_pad = pad_list(xs, 0.0)
 
@@ -508,9 +543,12 @@ class E2E(E2E_ASR, ASRInterface, torch.nn.Module):
             normalize_score = True
 
         # 2. decoder
-        y = [self.dec.recognize_beam_batch(hs_pad[i], hlens[i], lpz[i], recog_args, char_list,
-                                           rnnlm, normalize_score=normalize_score, strm_idx=i)
-             for i in range(self.num_spkrs)]
+        y = [
+            self.dec.recognize_beam_batch(
+                hs_pad[i], hlens[i], lpz[i], recog_args, char_list, rnnlm, normalize_score=normalize_score, strm_idx=i,
+            )
+            for i in range(self.num_spkrs)
+        ]
 
         if prev:
             self.train()
@@ -522,13 +560,13 @@ class E2E(E2E_ASR, ASRInterface, torch.nn.Module):
         :param ndarray xs: input acoustic feature (T, C, F)
         """
         if self.frontend is None:
-            raise RuntimeError('Frontend doesn\'t exist')
+            raise RuntimeError("Frontend doesn't exist")
         prev = self.training
         self.eval()
         ilens = np.fromiter((xx.shape[0] for xx in xs), dtype=np.int64)
 
         # subsample frame
-        xs = [xx[::self.subsample[0], :] for xx in xs]
+        xs = [xx[:: self.subsample[0], :] for xx in xs]
         xs = [to_device(self, to_torch_tensor(xx).float()) for xx in xs]
         xs_pad = pad_list(xs, 0.0)
         enhanced, hlensm, mask = self.frontend(xs_pad, ilens)
@@ -576,17 +614,22 @@ class E2E(E2E_ASR, ASRInterface, torch.nn.Module):
             # Permutation
             ys_pad = ys_pad.transpose(0, 1)  # (num_spkrs, B, Lmax)
             if self.num_spkrs <= 3:
-                loss_ctc = torch.stack([self.ctc(hs_pad[i // self.num_spkrs],
-                                                 hlens[i // self.num_spkrs],
-                                                 ys_pad[i % self.num_spkrs])
-                                        for i in range(self.num_spkrs ** 2)], 1)  # (B, num_spkrs^2)
+                loss_ctc = torch.stack(
+                    [
+                        self.ctc(hs_pad[i // self.num_spkrs], hlens[i // self.num_spkrs], ys_pad[i % self.num_spkrs],)
+                        for i in range(self.num_spkrs ** 2)
+                    ],
+                    1,
+                )  # (B, num_spkrs^2)
                 loss_ctc, min_perm = self.pit.pit_process(loss_ctc)
             for i in range(ys_pad.size(1)):  # B
                 ys_pad[:, i] = ys_pad[min_perm[i], i]
 
             # 2. Decoder
-            att_ws = [self.dec.calculate_all_attentions(hs_pad[i], hlens[i], ys_pad[i], strm_idx=i)
-                      for i in range(self.num_spkrs)]
+            att_ws = [
+                self.dec.calculate_all_attentions(hs_pad[i], hlens[i], ys_pad[i], strm_idx=i)
+                for i in range(self.num_spkrs)
+            ]
 
         return att_ws
 
@@ -606,32 +649,44 @@ class EncoderMix(torch.nn.Module):
     :param int num_spkrs: number of number of speakers
     """
 
-    def __init__(self, etype, idim, elayers_sd, elayers_rec, eunits, eprojs,
-                 subsample, dropout, num_spkrs=2, in_channel=1):
+    def __init__(
+        self, etype, idim, elayers_sd, elayers_rec, eunits, eprojs, subsample, dropout, num_spkrs=2, in_channel=1,
+    ):
         """Initialize the encoder of single-channel multi-speaker ASR."""
         super(EncoderMix, self).__init__()
         typ = etype.lstrip("vgg").rstrip("p")
-        if typ not in ['lstm', 'gru', 'blstm', 'bgru']:
+        if typ not in ["lstm", "gru", "blstm", "bgru"]:
             logging.error("Error: need to specify an appropriate encoder architecture")
         if etype.startswith("vgg"):
             if etype[-1] == "p":
                 self.enc_mix = torch.nn.ModuleList([VGG2L(in_channel)])
-                self.enc_sd = torch.nn.ModuleList([torch.nn.ModuleList([RNNP(get_vgg2l_odim(idim,
-                                                                                            in_channel=in_channel),
-                                                                             elayers_sd, eunits, eprojs,
-                                                                             subsample[:elayers_sd + 1], dropout,
-                                                                             typ=typ)])
-                                                   for i in range(num_spkrs)])
-                self.enc_rec = torch.nn.ModuleList([RNNP(eprojs, elayers_rec, eunits, eprojs,
-                                                         subsample[elayers_sd:], dropout, typ=typ)])
-                logging.info('Use CNN-VGG + B' + typ.upper() + 'P for encoder')
+                self.enc_sd = torch.nn.ModuleList(
+                    [
+                        torch.nn.ModuleList(
+                            [
+                                RNNP(
+                                    get_vgg2l_odim(idim, in_channel=in_channel),
+                                    elayers_sd,
+                                    eunits,
+                                    eprojs,
+                                    subsample[: elayers_sd + 1],
+                                    dropout,
+                                    typ=typ,
+                                )
+                            ]
+                        )
+                        for i in range(num_spkrs)
+                    ]
+                )
+                self.enc_rec = torch.nn.ModuleList(
+                    [RNNP(eprojs, elayers_rec, eunits, eprojs, subsample[elayers_sd:], dropout, typ=typ,)]
+                )
+                logging.info("Use CNN-VGG + B" + typ.upper() + "P for encoder")
             else:
-                logging.error(
-                    f"Error: need to specify an appropriate encoder architecture. Illegal name {etype}")
+                logging.error(f"Error: need to specify an appropriate encoder architecture. Illegal name {etype}")
                 sys.exit()
         else:
-            logging.error(
-                f"Error: need to specify an appropriate encoder architecture. Illegal name {etype}")
+            logging.error(f"Error: need to specify an appropriate encoder architecture. Illegal name {etype}")
             sys.exit()
 
         self.num_spkrs = num_spkrs
@@ -671,5 +726,14 @@ def encoder_for(args, idim, subsample):
         # with frontend, the mixed speech are separated as streams for each speaker
         return encoder_for_single(args, idim, subsample)
     else:
-        return EncoderMix(args.etype, idim, args.elayers_sd, args.elayers, args.eunits, args.eprojs, subsample,
-                          args.dropout_rate, args.num_spkrs)
+        return EncoderMix(
+            args.etype,
+            idim,
+            args.elayers_sd,
+            args.elayers,
+            args.eunits,
+            args.eprojs,
+            subsample,
+            args.dropout_rate,
+            args.num_spkrs,
+        )

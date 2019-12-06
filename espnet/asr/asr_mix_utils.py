@@ -23,7 +23,7 @@ import matplotlib
 from espnet.asr.asr_utils import parse_hypothesis
 
 
-matplotlib.use('Agg')
+matplotlib.use("Agg")
 
 
 # * -------------------- chainer extension related -------------------- *
@@ -56,8 +56,7 @@ class PlotAttentionReport(extension.Extension):
         att_ws_sd = self.get_attention_weights()
         for ns, att_ws in enumerate(att_ws_sd):
             for idx, att_w in enumerate(att_ws):
-                filename = "%s/%s.ep.{.updater.epoch}.output%d.png" % (
-                    self.outdir, self.data[idx][0], ns + 1)
+                filename = "%s/%s.ep.{.updater.epoch}.output%d.png" % (self.outdir, self.data[idx][0], ns + 1,)
                 att_w = self.get_attention_weight(idx, att_w, ns)
                 self._plot_and_save_attention(att_w, filename.format(trainer))
 
@@ -88,11 +87,11 @@ class PlotAttentionReport(extension.Extension):
     def get_attention_weight(self, idx, att_w, spkr_idx):
         """Transform attention weight in regard to self.reverse."""
         if self.reverse:
-            dec_len = int(self.data[idx][1]['input'][0]['shape'][0])
-            enc_len = int(self.data[idx][1]['output'][spkr_idx]['shape'][0])
+            dec_len = int(self.data[idx][1]["input"][0]["shape"][0])
+            enc_len = int(self.data[idx][1]["output"][spkr_idx]["shape"][0])
         else:
-            dec_len = int(self.data[idx][1]['output'][spkr_idx]['shape'][0])
-            enc_len = int(self.data[idx][1]['input'][0]['shape'][0])
+            dec_len = int(self.data[idx][1]["output"][spkr_idx]["shape"][0])
+            enc_len = int(self.data[idx][1]["input"][0]["shape"][0])
         if len(att_w.shape) == 3:
             att_w = att_w[:, :dec_len, :enc_len]
         else:
@@ -110,6 +109,7 @@ class PlotAttentionReport(extension.Extension):
 
         """
         import matplotlib.pyplot as plt
+
         if len(att_w.shape) == 3:
             for h, aw in enumerate(att_w, 1):
                 plt.subplot(1, len(att_w), h)
@@ -143,9 +143,9 @@ def add_results_to_json(js, nbest_hyps_sd, char_list):
     """
     # copy old json info
     new_js = dict()
-    new_js['utt2spk'] = js['utt2spk']
+    new_js["utt2spk"] = js["utt2spk"]
     num_spkrs = len(nbest_hyps_sd)
-    new_js['output'] = []
+    new_js["output"] = []
 
     for ns in range(num_spkrs):
         tmp_js = []
@@ -156,24 +156,24 @@ def add_results_to_json(js, nbest_hyps_sd, char_list):
             rec_text, rec_token, rec_tokenid, score = parse_hypothesis(hyp, char_list)
 
             # copy ground-truth
-            out_dic = dict(js['output'][ns].items())
+            out_dic = dict(js["output"][ns].items())
 
             # update name
-            out_dic['name'] += '[%d]' % n
+            out_dic["name"] += "[%d]" % n
 
             # add recognition results
-            out_dic['rec_text'] = rec_text
-            out_dic['rec_token'] = rec_token
-            out_dic['rec_tokenid'] = rec_tokenid
-            out_dic['score'] = score
+            out_dic["rec_text"] = rec_text
+            out_dic["rec_token"] = rec_token
+            out_dic["rec_tokenid"] = rec_tokenid
+            out_dic["score"] = score
 
             # add to list of N-best result dicts
             tmp_js.append(out_dic)
 
             # show 1-best result
             if n == 1:
-                logging.info('groundtruth: %s' % out_dic['text'])
-                logging.info('prediction : %s' % out_dic['rec_text'])
+                logging.info("groundtruth: %s" % out_dic["text"])
+                logging.info("prediction : %s" % out_dic["rec_text"])
 
-        new_js['output'].append(tmp_js)
+        new_js["output"].append(tmp_js)
     return new_js

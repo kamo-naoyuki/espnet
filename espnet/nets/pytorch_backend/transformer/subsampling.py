@@ -24,14 +24,10 @@ class Conv2dSubsampling(torch.nn.Module):
         """Construct an Conv2dSubsampling object."""
         super(Conv2dSubsampling, self).__init__()
         self.conv = torch.nn.Sequential(
-            torch.nn.Conv2d(1, odim, 3, 2),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(odim, odim, 3, 2),
-            torch.nn.ReLU()
+            torch.nn.Conv2d(1, odim, 3, 2), torch.nn.ReLU(), torch.nn.Conv2d(odim, odim, 3, 2), torch.nn.ReLU(),
         )
         self.out = torch.nn.Sequential(
-            torch.nn.Linear(odim * (((idim - 1) // 2 - 1) // 2), odim),
-            PositionalEncoding(odim, dropout_rate)
+            torch.nn.Linear(odim * (((idim - 1) // 2 - 1) // 2), odim), PositionalEncoding(odim, dropout_rate),
         )
 
     def forward(self, x, x_mask):

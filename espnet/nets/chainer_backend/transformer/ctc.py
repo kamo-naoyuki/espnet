@@ -44,8 +44,7 @@ class CTC(chainer.Chain):
         olens = [x.shape[0] for x in ys]
 
         # zero padding for hs
-        y_hat = self.ctc_lo(F.dropout(
-            F.pad_sequence(hs), ratio=self.dropout_rate), n_batch_axes=2)
+        y_hat = self.ctc_lo(F.dropout(F.pad_sequence(hs), ratio=self.dropout_rate), n_batch_axes=2)
         y_hat = F.separate(y_hat, axis=1)  # ilen list of batch x hdim
 
         # zero padding for ys
@@ -54,13 +53,12 @@ class CTC(chainer.Chain):
         # get length info
         input_length = chainer.Variable(self.xp.array(ilens, dtype=np.int32))
         label_length = chainer.Variable(self.xp.array(olens, dtype=np.int32))
-        logging.info(self.__class__.__name__ + ' input lengths:  ' + str(input_length.data))
-        logging.info(self.__class__.__name__ + ' output lengths: ' + str(label_length.data))
+        logging.info(self.__class__.__name__ + " input lengths:  " + str(input_length.data))
+        logging.info(self.__class__.__name__ + " output lengths: " + str(label_length.data))
 
         # get ctc loss
-        self.loss = F.connectionist_temporal_classification(
-            y_hat, y_true, 0, input_length, label_length)
-        logging.info('ctc loss:' + str(self.loss.data))
+        self.loss = F.connectionist_temporal_classification(y_hat, y_true, 0, input_length, label_length)
+        logging.info("ctc loss:" + str(self.loss.data))
 
         return self.loss
 
@@ -97,6 +95,7 @@ class WarpCTC(chainer.Chain):
         # a list of variables located in cpu/gpu. If the target of rnn becomes
         # a list of cpu arrays then this file would be no longer required.
         from chainer_ctc.warpctc import ctc as warp_ctc
+
         self.ctc = warp_ctc
         self.dropout_rate = dropout_rate
         self.loss = None
@@ -121,16 +120,15 @@ class WarpCTC(chainer.Chain):
 
         # zero padding for hs
         # output batch x frames x hdim > frames x batch x hdim
-        y_hat = self.ctc_lo(F.dropout(
-            hs, ratio=self.dropout_rate), n_batch_axes=2).transpose(1, 0, 2)
+        y_hat = self.ctc_lo(F.dropout(hs, ratio=self.dropout_rate), n_batch_axes=2).transpose(1, 0, 2)
 
         # get length info
-        logging.info(self.__class__.__name__ + ' input lengths:  ' + str(ilens))
-        logging.info(self.__class__.__name__ + ' output lengths: ' + str(olens))
+        logging.info(self.__class__.__name__ + " input lengths:  " + str(ilens))
+        logging.info(self.__class__.__name__ + " output lengths: " + str(olens))
 
         # get ctc loss
         self.loss = self.ctc(y_hat, ilens, ys)[0]
-        logging.info('ctc loss:' + str(self.loss.data))
+        logging.info("ctc loss:" + str(self.loss.data))
         return self.loss
 
     def log_softmax(self, hs):

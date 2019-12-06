@@ -23,8 +23,9 @@ class WindowStreamingE2E(object):
         self._ctc_posteriors = []
         self._last_recognition = None
 
-        assert self._recog_args.ctc_weight > 0.0, \
-            "WindowStreamingE2E works only with combined CTC and attention decoders."
+        assert (
+            self._recog_args.ctc_weight > 0.0
+        ), "WindowStreamingE2E works only with combined CTC and attention decoders."
 
     def accept_input(self, x):
         """Call this method each time a new batch of input is available."""
@@ -33,9 +34,7 @@ class WindowStreamingE2E(object):
 
         # Streaming encoder
         h, _, self._previous_encoder_recurrent_state = self._e2e.enc(
-            h.unsqueeze(0),
-            ilen,
-            self._previous_encoder_recurrent_state
+            h.unsqueeze(0), ilen, self._previous_encoder_recurrent_state
         )
         self._encoder_states.append(h.squeeze(0))
 
@@ -44,7 +43,10 @@ class WindowStreamingE2E(object):
 
     def _input_window_for_decoder(self, use_all=False):
         if use_all:
-            return torch.cat(self._encoder_states, dim=0), torch.cat(self._ctc_posteriors, dim=0)
+            return (
+                torch.cat(self._encoder_states, dim=0),
+                torch.cat(self._ctc_posteriors, dim=0),
+            )
 
         def select_unprocessed_windows(window_tensors):
             last_offset = self._offset
@@ -59,7 +61,7 @@ class WindowStreamingE2E(object):
 
         return (
             select_unprocessed_windows(self._encoder_states),
-            select_unprocessed_windows(self._ctc_posteriors)
+            select_unprocessed_windows(self._ctc_posteriors),
         )
 
     def decode_with_attention_offline(self):

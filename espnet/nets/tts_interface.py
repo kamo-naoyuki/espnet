@@ -68,6 +68,7 @@ class TTSInterface(object):
     def attention_plot_class(self):
         """Plot attention weights."""
         from espnet.asr.asr_utils import PlotAttentionReport
+
         return PlotAttentionReport
 
     @property
@@ -82,4 +83,4 @@ class TTSInterface(object):
             list[str]:  Base keys to plot during training.
 
         """
-        return ['loss']
+        return ["loss"]

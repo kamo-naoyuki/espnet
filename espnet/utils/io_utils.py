@@ -37,37 +37,35 @@ class LoadInputsAndTargets(object):
     :param: Optional[dict] preprocess_args: Used for tts mode only
     """
 
-    def __init__(self, mode='asr',
-                 preprocess_conf=None,
-                 load_input=True,
-                 load_output=True,
-                 sort_in_input_length=True,
-                 use_speaker_embedding=False,
-                 use_second_target=False,
-                 preprocess_args=None,
-                 keep_all_data_on_mem=False,
-                 ):
+    def __init__(
+        self,
+        mode="asr",
+        preprocess_conf=None,
+        load_input=True,
+        load_output=True,
+        sort_in_input_length=True,
+        use_speaker_embedding=False,
+        use_second_target=False,
+        preprocess_args=None,
+        keep_all_data_on_mem=False,
+    ):
         self._loaders = {}
-        if mode not in ['asr', 'tts', 'mt']:
-            raise ValueError(
-                'Only asr or tts are allowed: mode={}'.format(mode))
+        if mode not in ["asr", "tts", "mt"]:
+            raise ValueError("Only asr or tts are allowed: mode={}".format(mode))
         if preprocess_conf is not None:
             self.preprocessing = Transformation(preprocess_conf)
             logging.warning(
-                '[Experimental feature] Some preprocessing will be done '
-                'for the mini-batch creation using {}'
-                .format(self.preprocessing))
+                "[Experimental feature] Some preprocessing will be done "
+                "for the mini-batch creation using {}".format(self.preprocessing)
+            )
         else:
             # If conf doesn't exist, this function don't touch anything.
             self.preprocessing = None
 
-        if use_second_target and use_speaker_embedding and mode == 'tts':
-            raise ValueError('Choose one of "use_second_target" and '
-                             '"use_speaker_embedding "')
-        if (use_second_target or use_speaker_embedding) and mode != 'tts':
-            logging.warning(
-                '"use_second_target" and "use_speaker_embedding" is '
-                'used only for tts mode')
+        if use_second_target and use_speaker_embedding and mode == "tts":
+            raise ValueError('Choose one of "use_second_target" and ' '"use_speaker_embedding "')
+        if (use_second_target or use_speaker_embedding) and mode != "tts":
+            logging.warning('"use_second_target" and "use_speaker_embedding" is ' "used only for tts mode")
 
         self.mode = mode
         self.load_output = load_output
@@ -105,61 +103,50 @@ class LoadInputsAndTargets(object):
 
             if self.load_input:
                 # Note(kamo): This for-loop is for multiple inputs
-                for idx, inp in enumerate(info['input']):
+                for idx, inp in enumerate(info["input"]):
                     # {"input":
                     #  [{"feat": "some/path.h5:F01_050C0101_PED_REAL",
                     #    "filetype": "hdf5",
                     #    "name": "input1", ...}], ...}
-                    x = self._get_from_loader(
-                        filepath=inp['feat'],
-                        filetype=inp.get('filetype', 'mat'))
-                    x_feats_dict.setdefault(inp['name'], []).append(x)
+                    x = self._get_from_loader(filepath=inp["feat"], filetype=inp.get("filetype", "mat"))
+                    x_feats_dict.setdefault(inp["name"], []).append(x)
             # FIXME(kamo): Dirty way to load only speaker_embedding without the other inputs
-            elif self.mode == 'tts' and self.use_speaker_embedding:
-                for idx, inp in enumerate(info['input']):
-                    if idx != 1 and len(info['input']) > 1:
+            elif self.mode == "tts" and self.use_speaker_embedding:
+                for idx, inp in enumerate(info["input"]):
+                    if idx != 1 and len(info["input"]) > 1:
                         x = None
                     else:
-                        x = self._get_from_loader(
-                            filepath=inp['feat'],
-                            filetype=inp.get('filetype', 'mat'))
-                    x_feats_dict.setdefault(inp['name'], []).append(x)
+                        x = self._get_from_loader(filepath=inp["feat"], filetype=inp.get("filetype", "mat"))
+                    x_feats_dict.setdefault(inp["name"], []).append(x)
 
             if self.load_output:
-                if self.mode == 'mt':
-                    x = np.fromiter(map(int, info['output'][1]['tokenid'].split()),
-                                    dtype=np.int64)
-                    x_feats_dict.setdefault(info['output'][1]['name'], []).append(x)
+                if self.mode == "mt":
+                    x = np.fromiter(map(int, info["output"][1]["tokenid"].split()), dtype=np.int64)
+                    x_feats_dict.setdefault(info["output"][1]["name"], []).append(x)
 
-                for idx, inp in enumerate(info['output']):
-                    if 'tokenid' in inp:
+                for idx, inp in enumerate(info["output"]):
+                    if "tokenid" in inp:
                         # ======= Legacy format for output =======
                         # {"output": [{"tokenid": "1 2 3 4"}])
-                        x = np.fromiter(map(int, inp['tokenid'].split()),
-                                        dtype=np.int64)
+                        x = np.fromiter(map(int, inp["tokenid"].split()), dtype=np.int64)
                     else:
                         # ======= New format =======
                         # {"input":
                         #  [{"feat": "some/path.h5:F01_050C0101_PED_REAL",
                         #    "filetype": "hdf5",
                         #    "name": "target1", ...}], ...}
-                        x = self._get_from_loader(
-                            filepath=inp['feat'],
-                            filetype=inp.get('filetype', 'mat'))
+                        x = self._get_from_loader(filepath=inp["feat"], filetype=inp.get("filetype", "mat"))
 
-                    y_feats_dict.setdefault(inp['name'], []).append(x)
+                    y_feats_dict.setdefault(inp["name"], []).append(x)
 
-        if self.mode == 'asr':
-            return_batch, uttid_list = self._create_batch_asr(
-                x_feats_dict, y_feats_dict, uttid_list)
-        elif self.mode == 'tts':
+        if self.mode == "asr":
+            return_batch, uttid_list = self._create_batch_asr(x_feats_dict, y_feats_dict, uttid_list)
+        elif self.mode == "tts":
             _, info = batch[0]
-            eos = int(info['output'][0]['shape'][1]) - 1
-            return_batch, uttid_list = self._create_batch_tts(
-                x_feats_dict, y_feats_dict, uttid_list, eos)
-        elif self.mode == 'mt':
-            return_batch, uttid_list = self._create_batch_mt(
-                x_feats_dict, y_feats_dict, uttid_list)
+            eos = int(info["output"][0]["shape"][1]) - 1
+            return_batch, uttid_list = self._create_batch_tts(x_feats_dict, y_feats_dict, uttid_list, eos)
+        elif self.mode == "mt":
+            return_batch, uttid_list = self._create_batch_mt(x_feats_dict, y_feats_dict, uttid_list)
         else:
             raise NotImplementedError
 
@@ -167,8 +154,7 @@ class LoadInputsAndTargets(object):
             # Apply pre-processing all input features
             for x_name in return_batch.keys():
                 if x_name.startswith("input"):
-                    return_batch[x_name] = self.preprocessing(
-                        return_batch[x_name], uttid_list, **self.preprocess_args)
+                    return_batch[x_name] = self.preprocessing(return_batch[x_name], uttid_list, **self.preprocess_args)
 
         # Doesn't return the names now.
         return tuple(return_batch.values())
@@ -217,8 +203,8 @@ class LoadInputsAndTargets(object):
 
         if len(nonzero_sorted_idx) != len(xs[0]):
             logging.warning(
-                'Target sequences include empty tokenid (batch {} -> {}).'
-                .format(len(xs[0]), len(nonzero_sorted_idx)))
+                "Target sequences include empty tokenid (batch {} -> {}).".format(len(xs[0]), len(nonzero_sorted_idx))
+            )
 
         # remove zero-length samples
         xs = [[x[i] for i in nonzero_sorted_idx] for x in xs]
@@ -267,8 +253,8 @@ class LoadInputsAndTargets(object):
 
         if len(nonzero_sorted_idx) != len(xs):
             logging.warning(
-                'Target sequences include empty tokenid (batch {} -> {}).'
-                .format(len(xs), len(nonzero_sorted_idx)))
+                "Target sequences include empty tokenid (batch {} -> {}).".format(len(xs), len(nonzero_sorted_idx))
+            )
 
         # remove zero-length samples
         xs = [xs[i] for i in nonzero_sorted_idx]
@@ -321,8 +307,8 @@ class LoadInputsAndTargets(object):
 
             spembs = None
             spcs = None
-            spembs_name = 'spembs_none'
-            spcs_name = 'spcs_none'
+            spembs_name = "spembs_none"
+            spcs_name = "spcs_none"
 
             if self.use_second_target:
                 spcs = list(x_feats_dict.values())[1]
@@ -337,13 +323,10 @@ class LoadInputsAndTargets(object):
             x_name = list(y_feats_dict.keys())[0]
             y_name = list(x_feats_dict.keys())[0]
 
-            return_batch = OrderedDict([(x_name, xs),
-                                        (y_name, ys),
-                                        (spembs_name, spembs),
-                                        (spcs_name, spcs)])
+            return_batch = OrderedDict([(x_name, xs), (y_name, ys), (spembs_name, spembs), (spcs_name, spcs)])
         elif self.use_speaker_embedding:
             if len(x_feats_dict) == 0:
-                raise IndexError('No speaker embedding is provided')
+                raise IndexError("No speaker embedding is provided")
             elif len(x_feats_dict) == 1:
                 spembs_idx = 0
             else:
@@ -355,8 +338,7 @@ class LoadInputsAndTargets(object):
             x_name = list(y_feats_dict.keys())[0]
             spembs_name = list(x_feats_dict.keys())[spembs_idx]
 
-            return_batch = OrderedDict([(x_name, xs),
-                                        (spembs_name, spembs)])
+            return_batch = OrderedDict([(x_name, xs), (spembs_name, spembs)])
         else:
             x_name = list(y_feats_dict.keys())[0]
 
@@ -377,50 +359,50 @@ class LoadInputsAndTargets(object):
         :return:
         :rtype: np.ndarray
         """
-        if filetype == 'hdf5':
+        if filetype == "hdf5":
             # e.g.
             #    {"input": [{"feat": "some/path.h5:F01_050C0101_PED_REAL",
             #                "filetype": "hdf5",
             # -> filepath = "some/path.h5", key = "F01_050C0101_PED_REAL"
-            filepath, key = filepath.split(':', 1)
+            filepath, key = filepath.split(":", 1)
 
             loader = self._loaders.get(filepath)
             if loader is None:
                 # To avoid disk access, create loader only for the first time
-                loader = h5py.File(filepath, 'r')
+                loader = h5py.File(filepath, "r")
                 self._loaders[filepath] = loader
             return loader[key][()]
-        elif filetype == 'sound.hdf5':
+        elif filetype == "sound.hdf5":
             # e.g.
             #    {"input": [{"feat": "some/path.h5:F01_050C0101_PED_REAL",
             #                "filetype": "sound.hdf5",
             # -> filepath = "some/path.h5", key = "F01_050C0101_PED_REAL"
-            filepath, key = filepath.split(':', 1)
+            filepath, key = filepath.split(":", 1)
 
             loader = self._loaders.get(filepath)
             if loader is None:
                 # To avoid disk access, create loader only for the first time
-                loader = SoundHDF5File(filepath, 'r', dtype='int16')
+                loader = SoundHDF5File(filepath, "r", dtype="int16")
                 self._loaders[filepath] = loader
             array, rate = loader[key]
             return array
-        elif filetype == 'sound':
+        elif filetype == "sound":
             # e.g.
             #    {"input": [{"feat": "some/path.wav",
             #                "filetype": "sound"},
             # Assume PCM16
             if not self.keep_all_data_on_mem:
-                array, _ = soundfile.read(filepath, dtype='int16')
+                array, _ = soundfile.read(filepath, dtype="int16")
                 return array
             if filepath not in self._loaders:
-                array, _ = soundfile.read(filepath, dtype='int16')
+                array, _ = soundfile.read(filepath, dtype="int16")
                 self._loaders[filepath] = array
             return self._loaders[filepath]
-        elif filetype == 'npz':
+        elif filetype == "npz":
             # e.g.
             #    {"input": [{"feat": "some/path.npz:F01_050C0101_PED_REAL",
             #                "filetype": "npz",
-            filepath, key = filepath.split(':', 1)
+            filepath, key = filepath.split(":", 1)
 
             loader = self._loaders.get(filepath)
             if loader is None:
@@ -428,7 +410,7 @@ class LoadInputsAndTargets(object):
                 loader = np.load(filepath)
                 self._loaders[filepath] = loader
             return loader[key]
-        elif filetype == 'npy':
+        elif filetype == "npy":
             # e.g.
             #    {"input": [{"feat": "some/path.npy",
             #                "filetype": "npy"},
@@ -437,7 +419,7 @@ class LoadInputsAndTargets(object):
             if filepath not in self._loaders:
                 self._loaders[filepath] = np.load(filepath)
             return self._loaders[filepath]
-        elif filetype in ['mat', 'vec']:
+        elif filetype in ["mat", "vec"]:
             # e.g.
             #    {"input": [{"feat": "some/path.ark:123",
             #                "filetype": "mat"}]},
@@ -448,11 +430,11 @@ class LoadInputsAndTargets(object):
             if filepath not in self._loaders:
                 self._loaders[filepath] = kaldiio.load_mat(filepath)
             return self._loaders[filepath]
-        elif filetype == 'scp':
+        elif filetype == "scp":
             # e.g.
             #    {"input": [{"feat": "some/path.scp:F01_050C0101_PED_REAL",
             #                "filetype": "scp",
-            filepath, key = filepath.split(':', 1)
+            filepath, key = filepath.split(":", 1)
             loader = self._loaders.get(filepath)
             if loader is None:
                 # To avoid disk access, create loader only for the first time
@@ -460,8 +442,7 @@ class LoadInputsAndTargets(object):
                 self._loaders[filepath] = loader
             return loader[key]
         else:
-            raise NotImplementedError(
-                'Not supported: loader_type={}'.format(filetype))
+            raise NotImplementedError("Not supported: loader_type={}".format(filetype))
 
 
 class SoundHDF5File(object):
@@ -480,8 +461,7 @@ class SoundHDF5File(object):
 
     """
 
-    def __init__(self, filepath, mode='r+', format=None, dtype='int16',
-                 **kwargs):
+    def __init__(self, filepath, mode="r+", format=None, dtype="int16", **kwargs):
         self.filepath = filepath
         self.mode = mode
         self.dtype = dtype
@@ -493,21 +473,21 @@ class SoundHDF5File(object):
             format = second_ext[1:]
             if format.upper() not in soundfile.available_formats():
                 # If not found, flac is selected
-                format = 'flac'
+                format = "flac"
 
         # This format affects only saving
         self.format = format
 
     def __repr__(self):
-        return '<SoundHDF5 file "{}" (mode {}, format {}, type {})>'\
-            .format(self.filepath, self.mode, self.format, self.dtype)
+        return '<SoundHDF5 file "{}" (mode {}, format {}, type {})>'.format(
+            self.filepath, self.mode, self.format, self.dtype
+        )
 
     def create_dataset(self, name, shape=None, data=None, **kwds):
         f = io.BytesIO()
         array, rate = data
         soundfile.write(f, array, rate, format=self.format)
-        self.file.create_dataset(name, shape=shape,
-                                 data=np.void(f.getvalue()), **kwds)
+        self.file.create_dataset(name, shape=shape, data=np.void(f.getvalue()), **kwds)
 
     def __setitem__(self, name, data):
         self.create_dataset(name, data=data)

@@ -20,7 +20,9 @@ class LabelSmoothingLoss(nn.Module):
     :param torch.nn.Module criterion: loss function to be smoothed
     """
 
-    def __init__(self, size, padding_idx, smoothing, normalize_length=False, criterion=nn.KLDivLoss(reduce=False)):
+    def __init__(
+        self, size, padding_idx, smoothing, normalize_length=False, criterion=nn.KLDivLoss(reduce=False),
+    ):
         """Construct an LabelSmoothingLoss object."""
         super(LabelSmoothingLoss, self).__init__()
         self.criterion = criterion

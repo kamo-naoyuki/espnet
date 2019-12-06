@@ -32,10 +32,8 @@ class SegmentStreamingE2E(object):
         self._encoder_states = []
         self._ctc_posteriors = []
 
-        assert self._recog_args.batchsize <= 1, \
-            "SegmentStreamingE2E works only with batch size <= 1"
-        assert "b" not in self._e2e.etype, \
-            "SegmentStreamingE2E works only with uni-directional encoders"
+        assert self._recog_args.batchsize <= 1, "SegmentStreamingE2E works only with batch size <= 1"
+        assert "b" not in self._e2e.etype, "SegmentStreamingE2E works only with uni-directional encoders"
 
     def accept_input(self, x):
         """Call this method each time a new batch of input is available."""
@@ -45,9 +43,7 @@ class SegmentStreamingE2E(object):
 
         # Run encoder and apply greedy search on CTC softmax output
         h, _, self._previous_encoder_recurrent_state = self._e2e.enc(
-            h.unsqueeze(0),
-            ilen,
-            self._previous_encoder_recurrent_state
+            h.unsqueeze(0), ilen, self._previous_encoder_recurrent_state
         )
         z = self._e2e.ctc.argmax(h).squeeze(0)
 
@@ -57,9 +53,9 @@ class SegmentStreamingE2E(object):
             # Rerun encoder with zero state at onset of detection
             tail_len = self._subsampling_factor * (self._recog_args.streaming_onset_margin + 1)
             h, ilen = self._e2e.subsample_frames(
-                np.reshape(self._previous_input[-tail_len:], [-1, len(self._previous_input[0])]))
-            h, _, self._previous_encoder_recurrent_state = self._e2e.enc(
-                h.unsqueeze(0), ilen, None)
+                np.reshape(self._previous_input[-tail_len:], [-1, len(self._previous_input[0])])
+            )
+            h, _, self._previous_encoder_recurrent_state = self._e2e.enc(h.unsqueeze(0), ilen, None)
 
         hyp = None
         if self._activates == 1:
@@ -75,11 +71,9 @@ class SegmentStreamingE2E(object):
                 seg_len = len(self._encoder_states) - self._blank_dur + self._recog_args.streaming_offset_margin
                 if seg_len > 0:
                     # Run decoder with a detected segment
-                    h = torch.cat(self._encoder_states[:seg_len], dim=0).view(
-                        -1, self._encoder_states[0].size(0))
+                    h = torch.cat(self._encoder_states[:seg_len], dim=0).view(-1, self._encoder_states[0].size(0))
                     if self._recog_args.ctc_weight > 0.0:
-                        lpz = torch.cat(self._ctc_posteriors[:seg_len], dim=0).view(
-                            -1, self._ctc_posteriors[0].size(0))
+                        lpz = torch.cat(self._ctc_posteriors[:seg_len], dim=0).view(-1, self._ctc_posteriors[0].size(0))
                         if self._recog_args.batchsize > 0:
                             lpz = lpz.unsqueeze(0)
                         normalize_score = False
@@ -88,13 +82,18 @@ class SegmentStreamingE2E(object):
                         normalize_score = True
 
                     if self._recog_args.batchsize == 0:
-                        hyp = self._e2e.dec.recognize_beam(
-                            h, lpz, self._recog_args, self._char_list, self._rnnlm)
+                        hyp = self._e2e.dec.recognize_beam(h, lpz, self._recog_args, self._char_list, self._rnnlm)
                     else:
                         hlens = torch.tensor([h.shape[0]])
                         hyp = self._e2e.dec.recognize_beam_batch(
-                            h.unsqueeze(0), hlens, lpz, self._recog_args,
-                            self._char_list, self._rnnlm, normalize_score=normalize_score)[0]
+                            h.unsqueeze(0),
+                            hlens,
+                            lpz,
+                            self._recog_args,
+                            self._char_list,
+                            self._rnnlm,
+                            normalize_score=normalize_score,
+                        )[0]
 
                     self._activates = 0
                     self._blank_dur = 0

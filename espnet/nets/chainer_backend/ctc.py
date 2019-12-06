@@ -42,8 +42,7 @@ class CTC(chainer.Chain):
         olens = [x.shape[0] for x in ys]
 
         # zero padding for hs
-        y_hat = self.ctc_lo(F.dropout(
-            F.pad_sequence(hs), ratio=self.dropout_rate), n_batch_axes=2)
+        y_hat = self.ctc_lo(F.dropout(F.pad_sequence(hs), ratio=self.dropout_rate), n_batch_axes=2)
         y_hat = F.separate(y_hat, axis=1)  # ilen list of batch x hdim
 
         # zero padding for ys
@@ -52,13 +51,12 @@ class CTC(chainer.Chain):
         # get length info
         input_length = chainer.Variable(self.xp.array(ilens, dtype=np.int32))
         label_length = chainer.Variable(self.xp.array(olens, dtype=np.int32))
-        logging.info(self.__class__.__name__ + ' input lengths:  ' + str(input_length.data))
-        logging.info(self.__class__.__name__ + ' output lengths: ' + str(label_length.data))
+        logging.info(self.__class__.__name__ + " input lengths:  " + str(input_length.data))
+        logging.info(self.__class__.__name__ + " output lengths: " + str(label_length.data))
 
         # get ctc loss
-        self.loss = F.connectionist_temporal_classification(
-            y_hat, y_true, 0, input_length, label_length)
-        logging.info('ctc loss:' + str(self.loss.data))
+        self.loss = F.connectionist_temporal_classification(y_hat, y_true, 0, input_length, label_length)
+        logging.info("ctc loss:" + str(self.loss.data))
 
         return self.loss
 
@@ -110,18 +108,18 @@ class WarpCTC(chainer.Chain):
         olens = [x.shape[0] for x in ys]
 
         # zero padding for hs
-        y_hat = self.ctc_lo(F.dropout(
-            F.pad_sequence(hs), ratio=self.dropout_rate), n_batch_axes=2)
+        y_hat = self.ctc_lo(F.dropout(F.pad_sequence(hs), ratio=self.dropout_rate), n_batch_axes=2)
         y_hat = y_hat.transpose(1, 0, 2)  # batch x frames x hdim
 
         # get length info
-        logging.info(self.__class__.__name__ + ' input lengths:  ' + str(ilens))
-        logging.info(self.__class__.__name__ + ' output lengths: ' + str(olens))
+        logging.info(self.__class__.__name__ + " input lengths:  " + str(ilens))
+        logging.info(self.__class__.__name__ + " output lengths: " + str(olens))
 
         # get ctc loss
         from chainer_ctc.warpctc import ctc as warp_ctc
+
         self.loss = warp_ctc(y_hat, ilens, [cuda.to_cpu(l.data) for l in ys])[0]
-        logging.info('ctc loss:' + str(self.loss.data))
+        logging.info("ctc loss:" + str(self.loss.data))
 
         return self.loss
 
@@ -160,13 +158,12 @@ def ctc_for(args, odim):
 
     """
     ctc_type = args.ctc_type
-    if ctc_type == 'builtin':
+    if ctc_type == "builtin":
         logging.info("Using chainer CTC implementation")
         ctc = CTC(odim, args.eprojs, args.dropout_rate)
-    elif ctc_type == 'warpctc':
+    elif ctc_type == "warpctc":
         logging.info("Using warpctc CTC implementation")
         ctc = WarpCTC(odim, args.eprojs, args.dropout_rate)
     else:
-        raise ValueError('ctc_type must be "builtin" or "warpctc": {}'
-                         .format(ctc_type))
+        raise ValueError('ctc_type must be "builtin" or "warpctc": {}'.format(ctc_type))
     return ctc

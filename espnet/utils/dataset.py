@@ -44,7 +44,7 @@ class ChainerDataLoader(object):
     def __init__(self, **kwargs):
         """Init function."""
         self.loader = torch.utils.data.dataloader.DataLoader(**kwargs)
-        self.len = len(kwargs['dataset'])
+        self.len = len(kwargs["dataset"])
         self.current_position = 0
         self.epoch = 0
         self.iter = None
@@ -77,14 +77,14 @@ class ChainerDataLoader(object):
 
     def serialize(self, serializer):
         """Serialize and deserialize function."""
-        epoch = serializer('epoch', self.epoch)
-        current_position = serializer('current_position', self.current_position)
+        epoch = serializer("epoch", self.epoch)
+        current_position = serializer("current_position", self.current_position)
         self.epoch = epoch
         self.current_position = current_position
 
     def start_shuffle(self):
         """Shuffle function for sortagrad."""
-        self.kwargs['shuffle'] = True
+        self.kwargs["shuffle"] = True
         self.loader = torch.utils.data.dataloader.DataLoader(**self.kwargs)
 
     def finalize(self):

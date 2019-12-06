@@ -29,9 +29,20 @@ class DecoderRNNT(torch.nn.Module):
 
     """
 
-    def __init__(self, eprojs, odim, dtype, dlayers, dunits, blank,
-                 embed_dim, joint_dim, dropout=0.0, dropout_embed=0.0,
-                 rnnt_type='warp-transducer'):
+    def __init__(
+        self,
+        eprojs,
+        odim,
+        dtype,
+        dlayers,
+        dunits,
+        blank,
+        embed_dim,
+        joint_dim,
+        dropout=0.0,
+        dropout_embed=0.0,
+        rnnt_type="warp-transducer",
+    ):
         """Transducer initializer."""
         super(DecoderRNNT, self).__init__()
 
@@ -50,7 +61,7 @@ class DecoderRNNT(torch.nn.Module):
             self.decoder += [dec_net(dunits, dunits)]
             self.dropout_dec += [torch.nn.Dropout(p=dropout)]
 
-        if rnnt_type == 'warp-transducer':
+        if rnnt_type == "warp-transducer":
             from warprnnt_pytorch import RNNTLoss
 
             self.rnnt_loss = RNNTLoss(blank=blank)
@@ -115,14 +126,12 @@ class DecoderRNNT(torch.nn.Module):
             z_list[0], c_list[0] = self.decoder[0](ey, (z_prev[0], c_prev[0]))
 
             for l in six.moves.range(1, self.dlayers):
-                z_list[l], c_list[l] = self.decoder[l](
-                    self.dropout_dec[l - 1](z_list[l - 1]), (z_prev[l], c_prev[l]))
+                z_list[l], c_list[l] = self.decoder[l](self.dropout_dec[l - 1](z_list[l - 1]), (z_prev[l], c_prev[l]))
         else:
             z_list[0] = self.decoder[0](ey, z_prev[0])
 
             for l in six.moves.range(1, self.dlayers):
-                z_list[l] = self.decoder[l](self.dropout_dec[l - 1](z_list[l - 1]),
-                                            z_prev[l])
+                z_list[l] = self.decoder[l](self.dropout_dec[l - 1](z_list[l - 1]), z_prev[l])
         y = self.dropout_dec[-1](z_list[-1])
 
         return y, (z_list, c_list)
@@ -202,7 +211,7 @@ class DecoderRNNT(torch.nn.Module):
         z_list, c_list = self.zero_state(h.unsqueeze(0))
         ey = to_device(self, torch.zeros((1, self.embed_dim)))
 
-        hyp = {'score': 0.0, 'yseq': [self.blank]}
+        hyp = {"score": 0.0, "yseq": [self.blank]}
 
         y, (z_list, c_list) = self.rnn_forward(ey, (z_list, c_list))
 
@@ -211,10 +220,10 @@ class DecoderRNNT(torch.nn.Module):
             logp, pred = torch.max(ytu, dim=0)
 
             if pred != self.blank:
-                hyp['yseq'].append(int(pred))
-                hyp['score'] += float(logp)
+                hyp["yseq"].append(int(pred))
+                hyp["score"] += float(logp)
 
-                eys = to_device(self, torch.full((1, 1), hyp['yseq'][-1], dtype=torch.long))
+                eys = to_device(self, torch.full((1, 1), hyp["yseq"][-1], dtype=torch.long))
                 ey = self.dropout_embed(self.embed(eys))
 
                 y, (z_list, c_list) = self.rnn_forward(ey[0], (z_list, c_list))
@@ -244,49 +253,48 @@ class DecoderRNNT(torch.nn.Module):
         _, (z_list, c_list) = self.rnn_forward(eys, None)
 
         if rnnlm:
-            kept_hyps = [{'score': 0.0, 'yseq': [self.blank], 'z_prev': z_list,
-                          'c_prev': c_list, 'lm_state': None}]
+            kept_hyps = [{"score": 0.0, "yseq": [self.blank], "z_prev": z_list, "c_prev": c_list, "lm_state": None}]
         else:
-            kept_hyps = [{'score': 0.0, 'yseq': [self.blank], 'z_prev': z_list,
-                          'c_prev': c_list}]
+            kept_hyps = [{"score": 0.0, "yseq": [self.blank], "z_prev": z_list, "c_prev": c_list}]
 
         for i, hi in enumerate(h):
             hyps = kept_hyps
             kept_hyps = []
 
             while True:
-                new_hyp = max(hyps, key=lambda x: x['score'])
+                new_hyp = max(hyps, key=lambda x: x["score"])
                 hyps.remove(new_hyp)
 
-                vy = to_device(self, torch.full((1, 1), new_hyp['yseq'][-1], dtype=torch.long))
+                vy = to_device(self, torch.full((1, 1), new_hyp["yseq"][-1], dtype=torch.long))
                 ey = self.dropout_embed(self.embed(vy))
 
-                y, (z_list, c_list) = self.rnn_forward(ey[0], (new_hyp['z_prev'],
-                                                               new_hyp['c_prev']))
+                y, (z_list, c_list) = self.rnn_forward(ey[0], (new_hyp["z_prev"], new_hyp["c_prev"]))
 
                 ytu = F.log_softmax(self.joint(hi, y[0]), dim=0)
 
                 if rnnlm:
-                    rnnlm_state, rnnlm_scores = rnnlm.predict(new_hyp['lm_state'], vy[0])
+                    rnnlm_state, rnnlm_scores = rnnlm.predict(new_hyp["lm_state"], vy[0])
 
                 for k in six.moves.range(self.odim):
-                    beam_hyp = {'score': new_hyp['score'] + float(ytu[k]),
-                                'yseq': new_hyp['yseq'][:],
-                                'z_prev': new_hyp['z_prev'],
-                                'c_prev': new_hyp['c_prev']}
+                    beam_hyp = {
+                        "score": new_hyp["score"] + float(ytu[k]),
+                        "yseq": new_hyp["yseq"][:],
+                        "z_prev": new_hyp["z_prev"],
+                        "c_prev": new_hyp["c_prev"],
+                    }
                     if rnnlm:
-                        beam_hyp['lm_state'] = new_hyp['lm_state']
+                        beam_hyp["lm_state"] = new_hyp["lm_state"]
 
                     if k == self.blank:
                         kept_hyps.append(beam_hyp)
                     else:
-                        beam_hyp['z_prev'] = z_list[:]
-                        beam_hyp['c_prev'] = c_list[:]
-                        beam_hyp['yseq'].append(int(k))
+                        beam_hyp["z_prev"] = z_list[:]
+                        beam_hyp["c_prev"] = c_list[:]
+                        beam_hyp["yseq"].append(int(k))
 
                         if rnnlm:
-                            beam_hyp['lm_state'] = rnnlm_state
-                            beam_hyp['score'] += recog_args.lm_weight * rnnlm_scores[0][k]
+                            beam_hyp["lm_state"] = rnnlm_state
+                            beam_hyp["score"] += recog_args.lm_weight * rnnlm_scores[0][k]
 
                         hyps.append(beam_hyp)
 
@@ -294,11 +302,9 @@ class DecoderRNNT(torch.nn.Module):
                     break
 
         if normscore:
-            nbest_hyps = sorted(
-                kept_hyps, key=lambda x: x['score'] / len(x['yseq']), reverse=True)[:nbest]
+            nbest_hyps = sorted(kept_hyps, key=lambda x: x["score"] / len(x["yseq"]), reverse=True)[:nbest]
         else:
-            nbest_hyps = sorted(
-                kept_hyps, key=lambda x: x['score'], reverse=True)[:nbest]
+            nbest_hyps = sorted(kept_hyps, key=lambda x: x["score"], reverse=True)[:nbest]
 
         return nbest_hyps
 
@@ -322,9 +328,21 @@ class DecoderRNNTAtt(torch.nn.Module):
 
     """
 
-    def __init__(self, eprojs, odim, dtype, dlayers, dunits, blank, att,
-                 embed_dim, joint_dim, dropout=0.0, dropout_embed=0.0,
-                 rnnt_type='warp-transducer'):
+    def __init__(
+        self,
+        eprojs,
+        odim,
+        dtype,
+        dlayers,
+        dunits,
+        blank,
+        att,
+        embed_dim,
+        joint_dim,
+        dropout=0.0,
+        dropout_embed=0.0,
+        rnnt_type="warp-transducer",
+    ):
         """Transducer with attention initializer."""
         super(DecoderRNNTAtt, self).__init__()
 
@@ -343,7 +361,7 @@ class DecoderRNNTAtt(torch.nn.Module):
             self.decoder += [dec_net(dunits, dunits)]
             self.dropout_dec += [torch.nn.Dropout(p=dropout)]
 
-        if rnnt_type == 'warp-transducer':
+        if rnnt_type == "warp-transducer":
             from warprnnt_pytorch import RNNTLoss
 
             self.rnnt_loss = RNNTLoss(blank=blank)
@@ -410,8 +428,7 @@ class DecoderRNNTAtt(torch.nn.Module):
             z_list[0], c_list[0] = self.decoder[0](ey, (z_prev[0], c_prev[0]))
 
             for l in six.moves.range(1, self.dlayers):
-                z_list[l], c_list[l] = self.decoder[l](
-                    self.dropout_dec[l - 1](z_list[l - 1]), (z_prev[l], c_prev[l]))
+                z_list[l], c_list[l] = self.decoder[l](self.dropout_dec[l - 1](z_list[l - 1]), (z_prev[l], c_prev[l]))
         else:
             z_list[0] = self.decoder[0](ey, z_prev[0])
 
@@ -505,12 +522,11 @@ class DecoderRNNTAtt(torch.nn.Module):
         z_list, c_list = self.zero_state(h.unsqueeze(0))
         eys = torch.zeros((1, self.embed_dim))
 
-        att_c, att_w = self.att[0](h.unsqueeze(0), [h.size(0)],
-                                   self.dropout_dec[0](z_list[0]), None)
+        att_c, att_w = self.att[0](h.unsqueeze(0), [h.size(0)], self.dropout_dec[0](z_list[0]), None)
 
         ey = torch.cat((eys, att_c), dim=1)
 
-        hyp = {'score': 0.0, 'yseq': [self.blank]}
+        hyp = {"score": 0.0, "yseq": [self.blank]}
 
         y, (z_list, c_list) = self.rnn_forward(ey, (z_list, c_list))
 
@@ -519,14 +535,12 @@ class DecoderRNNTAtt(torch.nn.Module):
             logp, pred = torch.max(ytu, dim=0)
 
             if pred != self.blank:
-                hyp['yseq'].append(int(pred))
-                hyp['score'] += float(logp)
+                hyp["yseq"].append(int(pred))
+                hyp["score"] += float(logp)
 
-                eys = torch.full((1, 1), hyp['yseq'][-1], dtype=torch.long)
+                eys = torch.full((1, 1), hyp["yseq"][-1], dtype=torch.long)
                 ey = self.dropout_emb(self.embed(eys))
-                att_c, att_w = self.att[0](h.unsqueeze(0), [h.size(0)],
-                                           self.dropout_dec[0](z_list[0]),
-                                           att_w)
+                att_c, att_w = self.att[0](h.unsqueeze(0), [h.size(0)], self.dropout_dec[0](z_list[0]), att_w)
                 ey = torch.cat((ey[0], att_c), dim=1)
 
                 y, (z_list, c_list) = self.rnn_forward(ey, (z_list, c_list))
@@ -555,61 +569,69 @@ class DecoderRNNTAtt(torch.nn.Module):
         z_list, c_list = self.zero_state(h.unsqueeze(0))
         eys = torch.zeros((1, self.embed_dim))
 
-        att_c, att_w = self.att[0](h.unsqueeze(0), [h.size(0)],
-                                   self.dropout_dec[0](z_list[0]), None)
+        att_c, att_w = self.att[0](h.unsqueeze(0), [h.size(0)], self.dropout_dec[0](z_list[0]), None)
 
         ey = torch.cat((eys, att_c), dim=1)
         _, (z_list, c_list) = self.rnn_forward(ey, None)
 
         if rnnlm:
-            kept_hyps = [{'score': 0.0, 'yseq': [self.blank], 'z_prev': z_list,
-                          'c_prev': c_list, 'a_prev': None, 'lm_state': None}]
+            kept_hyps = [
+                {
+                    "score": 0.0,
+                    "yseq": [self.blank],
+                    "z_prev": z_list,
+                    "c_prev": c_list,
+                    "a_prev": None,
+                    "lm_state": None,
+                }
+            ]
         else:
-            kept_hyps = [{'score': 0.0, 'yseq': [self.blank], 'z_prev': z_list,
-                          'c_prev': c_list, 'a_prev': None}]
+            kept_hyps = [{"score": 0.0, "yseq": [self.blank], "z_prev": z_list, "c_prev": c_list, "a_prev": None}]
 
         for i, hi in enumerate(h):
             hyps = kept_hyps
             kept_hyps = []
 
             while True:
-                new_hyp = max(hyps, key=lambda x: x['score'])
+                new_hyp = max(hyps, key=lambda x: x["score"])
                 hyps.remove(new_hyp)
 
-                vy = to_device(self, torch.full((1, 1), new_hyp['yseq'][-1], dtype=torch.long))
+                vy = to_device(self, torch.full((1, 1), new_hyp["yseq"][-1], dtype=torch.long))
                 ey = self.dropout_emb(self.embed(vy))
 
-                att_c, att_w = self.att[0](h.unsqueeze(0), [h.size(0)],
-                                           self.dropout_dec[0](new_hyp['z_prev'][0]),
-                                           new_hyp['a_prev'])
+                att_c, att_w = self.att[0](
+                    h.unsqueeze(0), [h.size(0)], self.dropout_dec[0](new_hyp["z_prev"][0]), new_hyp["a_prev"],
+                )
 
                 ey = torch.cat((ey[0], att_c), dim=1)
-                y, (z_list, c_list) = self.rnn_forward(ey, (new_hyp['z_prev'], new_hyp['c_prev']))
+                y, (z_list, c_list) = self.rnn_forward(ey, (new_hyp["z_prev"], new_hyp["c_prev"]))
                 ytu = F.log_softmax(self.joint(hi, y[0]), dim=0)
 
                 if rnnlm:
-                    rnnlm_state, rnnlm_scores = rnnlm.predict(new_hyp['lm_state'], vy[0])
+                    rnnlm_state, rnnlm_scores = rnnlm.predict(new_hyp["lm_state"], vy[0])
 
                 for k in six.moves.range(self.odim):
-                    beam_hyp = {'score': new_hyp['score'] + float(ytu[k]),
-                                'yseq': new_hyp['yseq'][:],
-                                'z_prev': new_hyp['z_prev'],
-                                'c_prev': new_hyp['c_prev'],
-                                'a_prev': new_hyp['a_prev']}
+                    beam_hyp = {
+                        "score": new_hyp["score"] + float(ytu[k]),
+                        "yseq": new_hyp["yseq"][:],
+                        "z_prev": new_hyp["z_prev"],
+                        "c_prev": new_hyp["c_prev"],
+                        "a_prev": new_hyp["a_prev"],
+                    }
                     if rnnlm:
-                        beam_hyp['lm_state'] = new_hyp['lm_state']
+                        beam_hyp["lm_state"] = new_hyp["lm_state"]
 
                     if k == self.blank:
                         kept_hyps.append(beam_hyp)
                     else:
-                        beam_hyp['z_prev'] = z_list[:]
-                        beam_hyp['c_prev'] = c_list[:]
-                        beam_hyp['a_prev'] = att_w[:]
-                        beam_hyp['yseq'].append(int(k))
+                        beam_hyp["z_prev"] = z_list[:]
+                        beam_hyp["c_prev"] = c_list[:]
+                        beam_hyp["a_prev"] = att_w[:]
+                        beam_hyp["yseq"].append(int(k))
 
                         if rnnlm:
-                            beam_hyp['lm_state'] = rnnlm_state
-                            beam_hyp['score'] += recog_args.lm_weight * rnnlm_scores[0][k]
+                            beam_hyp["lm_state"] = rnnlm_state
+                            beam_hyp["score"] += recog_args.lm_weight * rnnlm_scores[0][k]
 
                         hyps.append(beam_hyp)
 
@@ -617,11 +639,9 @@ class DecoderRNNTAtt(torch.nn.Module):
                     break
 
         if normscore:
-            nbest_hyps = sorted(
-                kept_hyps, key=lambda x: x['score'] / len(x['yseq']), reverse=True)[:nbest]
+            nbest_hyps = sorted(kept_hyps, key=lambda x: x["score"] / len(x["yseq"]), reverse=True)[:nbest]
         else:
-            nbest_hyps = sorted(
-                kept_hyps, key=lambda x: x['score'], reverse=True)[:nbest]
+            nbest_hyps = sorted(kept_hyps, key=lambda x: x["score"], reverse=True)[:nbest]
 
         return nbest_hyps
 
@@ -671,13 +691,32 @@ class DecoderRNNTAtt(torch.nn.Module):
 
 def decoder_for(args, odim, att=None, blank=0):
     """Transducer mode selector."""
-    if args.rnnt_mode == 'rnnt':
-        return DecoderRNNT(args.eprojs, odim, args.dtype, args.dlayers, args.dunits,
-                           blank, args.dec_embed_dim, args.joint_dim,
-                           args.dropout_rate_decoder, args.dropout_rate_embed_decoder,
-                           args.rnnt_type)
-    elif args.rnnt_mode == 'rnnt-att':
-        return DecoderRNNTAtt(args.eprojs, odim, args.dtype, args.dlayers, args.dunits,
-                              blank, att, args.dec_embed_dim, args.joint_dim,
-                              args.dropout_rate_decoder, args.dropout_rate_embed_decoder,
-                              args.rnnt_type)
+    if args.rnnt_mode == "rnnt":
+        return DecoderRNNT(
+            args.eprojs,
+            odim,
+            args.dtype,
+            args.dlayers,
+            args.dunits,
+            blank,
+            args.dec_embed_dim,
+            args.joint_dim,
+            args.dropout_rate_decoder,
+            args.dropout_rate_embed_decoder,
+            args.rnnt_type,
+        )
+    elif args.rnnt_mode == "rnnt-att":
+        return DecoderRNNTAtt(
+            args.eprojs,
+            odim,
+            args.dtype,
+            args.dlayers,
+            args.dunits,
+            blank,
+            att,
+            args.dec_embed_dim,
+            args.joint_dim,
+            args.dropout_rate_decoder,
+            args.dropout_rate_embed_decoder,
+            args.rnnt_type,
+        )

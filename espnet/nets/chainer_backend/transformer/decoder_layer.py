@@ -21,21 +21,19 @@ class DecoderLayer(chainer.Chain):
 
     """
 
-    def __init__(self, n_units, d_units=0, h=8, dropout=0.1,
-                 initialW=None, initial_bias=None):
+    def __init__(self, n_units, d_units=0, h=8, dropout=0.1, initialW=None, initial_bias=None):
         """Initialize DecoderLayer."""
         super(DecoderLayer, self).__init__()
         with self.init_scope():
-            self.self_attn = MultiHeadAttention(n_units, h, dropout=dropout,
-                                                initialW=initialW,
-                                                initial_bias=initial_bias)
-            self.src_attn = MultiHeadAttention(n_units, h, dropout=dropout,
-                                               initialW=initialW,
-                                               initial_bias=initial_bias)
-            self.feed_forward = PositionwiseFeedForward(n_units, d_units=d_units,
-                                                        dropout=dropout,
-                                                        initialW=initialW,
-                                                        initial_bias=initial_bias)
+            self.self_attn = MultiHeadAttention(
+                n_units, h, dropout=dropout, initialW=initialW, initial_bias=initial_bias,
+            )
+            self.src_attn = MultiHeadAttention(
+                n_units, h, dropout=dropout, initialW=initialW, initial_bias=initial_bias,
+            )
+            self.feed_forward = PositionwiseFeedForward(
+                n_units, d_units=d_units, dropout=dropout, initialW=initialW, initial_bias=initial_bias,
+            )
             self.norm1 = LayerNorm(n_units)
             self.norm2 = LayerNorm(n_units)
             self.norm3 = LayerNorm(n_units)

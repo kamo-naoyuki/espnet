@@ -28,8 +28,9 @@ class DecoderLayer(nn.Module):
 
     """
 
-    def __init__(self, size, self_attn, src_attn, feed_forward, dropout_rate,
-                 normalize_before=True, concat_after=False):
+    def __init__(
+        self, size, self_attn, src_attn, feed_forward, dropout_rate, normalize_before=True, concat_after=False,
+    ):
         """Construct an DecoderLayer object."""
         super(DecoderLayer, self).__init__()
         self.size = size
@@ -66,8 +67,11 @@ class DecoderLayer(nn.Module):
             tgt_q_mask = tgt_mask
         else:
             # compute only the last frame query keeping dim: max_time_out -> 1
-            assert cache.shape == (tgt.shape[0], tgt.shape[1] - 1, self.size), \
-                f"{cache.shape} == {(tgt.shape[0], tgt.shape[1] - 1, self.size)}"
+            assert cache.shape == (
+                tgt.shape[0],
+                tgt.shape[1] - 1,
+                self.size,
+            ), f"{cache.shape} == {(tgt.shape[0], tgt.shape[1] - 1, self.size)}"
             tgt_q = tgt[:, -1:, :]
             residual = residual[:, -1:, :]
             tgt_q_mask = None

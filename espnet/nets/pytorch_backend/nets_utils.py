@@ -47,7 +47,7 @@ def pad_list(xs, pad_value):
     pad = xs[0].new(n_batch, max_len, *xs[0].size()[1:]).fill_(pad_value)
 
     for i in range(n_batch):
-        pad[i, :xs[i].size(0)] = xs[i]
+        pad[i, : xs[i].size(0)] = xs[i]
 
     return pad
 
@@ -137,7 +137,7 @@ def make_pad_mask(lengths, xs=None, length_dim=-1):
 
     """
     if length_dim == 0:
-        raise ValueError('length_dim cannot be 0: {}'.format(length_dim))
+        raise ValueError("length_dim cannot be 0: {}".format(length_dim))
 
     if not isinstance(lengths, list):
         lengths = lengths.tolist()
@@ -158,8 +158,7 @@ def make_pad_mask(lengths, xs=None, length_dim=-1):
         if length_dim < 0:
             length_dim = xs.dim() + length_dim
         # ind = (:, None, ..., None, :, , None, ..., None)
-        ind = tuple(slice(None) if i in (0, length_dim) else None
-                    for i in range(xs.dim()))
+        ind = tuple(slice(None) if i in (0, length_dim) else None for i in range(xs.dim()))
         mask = mask[ind].expand_as(xs).to(xs.device)
     return mask
 
@@ -294,10 +293,7 @@ def th_accuracy(pad_outputs, pad_targets, ignore_label):
         float: Accuracy value (0.0 - 1.0).
 
     """
-    pad_pred = pad_outputs.view(
-        pad_targets.size(0),
-        pad_targets.size(1),
-        pad_outputs.size(1)).argmax(2)
+    pad_pred = pad_outputs.view(pad_targets.size(0), pad_targets.size(1), pad_outputs.size(1)).argmax(2)
     mask = pad_targets != ignore_label
     numerator = torch.sum(pad_pred.masked_select(mask) == pad_targets.masked_select(mask))
     denominator = torch.sum(mask)
@@ -331,9 +327,10 @@ def to_torch_tensor(x):
     """
     # If numpy, change to torch tensor
     if isinstance(x, np.ndarray):
-        if x.dtype.kind == 'c':
+        if x.dtype.kind == "c":
             # Dynamically importing because torch_complex requires python3
             from torch_complex.tensor import ComplexTensor
+
             return ComplexTensor(x)
         else:
             return torch.from_numpy(x)
@@ -343,19 +340,21 @@ def to_torch_tensor(x):
         # Dynamically importing because torch_complex requires python3
         from torch_complex.tensor import ComplexTensor
 
-        if 'real' not in x or 'imag' not in x:
+        if "real" not in x or "imag" not in x:
             raise ValueError("has 'real' and 'imag' keys: {}".format(list(x)))
         # Relative importing because of using python3 syntax
-        return ComplexTensor(x['real'], x['imag'])
+        return ComplexTensor(x["real"], x["imag"])
 
     # If torch.Tensor, as it is
     elif isinstance(x, torch.Tensor):
         return x
 
     else:
-        error = ("x must be numpy.ndarray, torch.Tensor or a dict like "
-                 "{{'real': torch.Tensor, 'imag': torch.Tensor}}, "
-                 "but got {}".format(type(x)))
+        error = (
+            "x must be numpy.ndarray, torch.Tensor or a dict like "
+            "{{'real': torch.Tensor, 'imag': torch.Tensor}}, "
+            "but got {}".format(type(x))
+        )
         try:
             from torch_complex.tensor import ComplexTensor
         except Exception:

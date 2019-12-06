@@ -16,7 +16,8 @@ def test_decoder_cache(normalize_before):
         linear_units=3,
         num_blocks=2,
         normalize_before=normalize_before,
-        dropout_rate=0.0)
+        dropout_rate=0.0,
+    )
     dlayer = decoder.decoders[0]
     memory = torch.randn(2, 5, adim)
 
@@ -47,12 +48,7 @@ if __name__ == "__main__":
 
     adim = 4
     odim = 5
-    decoder = Decoder(
-        odim=odim,
-        attention_dim=adim,
-        linear_units=3,
-        num_blocks=2,
-        dropout_rate=0.0)
+    decoder = Decoder(odim=odim, attention_dim=adim, linear_units=3, num_blocks=2, dropout_rate=0.0)
     dlayer = decoder.decoders[0]
     xlen = 100
     xs = torch.randint(0, odim, (1, xlen))
@@ -66,8 +62,8 @@ if __name__ == "__main__":
         cache = decoder.init_state()
         print(key)
         for i in range(xlen):
-            x = xs[:, :i + 1]
-            m = mask[:, :i + 1, :i + 1]
+            x = xs[:, : i + 1]
+            m = mask[:, : i + 1, : i + 1]
             start = time()
             for _ in range(n_avg):
                 with torch.no_grad():

@@ -105,10 +105,11 @@ def prepare_inputs(mode, num_encs=2, is_cuda=False):
 
 
 def convert_batch(batch, backend="pytorch", is_cuda=False, idim=40, odim=5, num_inputs=2):
-    ilens_list = [np.array([x[1]['input'][idx]['shape'][0] for x in batch]) for idx in range(num_inputs)]
-    olens = np.array([x[1]['output'][0]['shape'][0] for x in batch])
-    xs_list = [[np.random.randn(ilen, idim).astype(np.float32) for ilen in ilens_list[idx]] for idx in
-               range(num_inputs)]
+    ilens_list = [np.array([x[1]["input"][idx]["shape"][0] for x in batch]) for idx in range(num_inputs)]
+    olens = np.array([x[1]["output"][0]["shape"][0] for x in batch])
+    xs_list = [
+        [np.random.randn(ilen, idim).astype(np.float32) for ilen in ilens_list[idx]] for idx in range(num_inputs)
+    ]
     ys = [np.random.randint(1, odim, olen).astype(np.int32) for olen in olens]
     is_pytorch = backend == "pytorch"
     if is_pytorch:
@@ -125,121 +126,143 @@ def convert_batch(batch, backend="pytorch", is_cuda=False, idim=40, odim=5, num_
 
 
 @pytest.mark.parametrize(
-    "module, num_encs, model_dict", [
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'elayers': [2, 3], 'dlayers': 2}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'etype': ['grup', 'grup']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'etype': ['lstmp', 'lstmp']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'etype': ['bgrup', 'bgrup']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'etype': ['blstmp', 'blstmp']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'etype': ['bgru', 'bgru']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'etype': ['blstm', 'blstm']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'etype': ['vgggru', 'vgggru']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'etype': ['vgggrup', 'vgggrup']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'etype': ['vgglstm', 'vgglstm']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'etype': ['vgglstmp', 'vgglstmp']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'etype': ['vggbgru', 'vggbgru']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'etype': ['vggbgrup', 'vggbgrup']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'etype': ['vggblstm', 'vggblstm']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'etype': ['blstmp', 'vggblstmp']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'dtype': 'gru'}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'atype': ['noatt', 'noatt']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'atype': ['add', 'add']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'atype': ['dot', 'dot']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'atype': ['coverage', 'coverage']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'atype': ['coverage_location', 'coverage_location']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'atype': ['location2d', 'location2d']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'atype': ['location_recurrent', 'location_recurrent']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'atype': ['multi_head_dot', 'multi_head_dot']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'atype': ['multi_head_add', 'multi_head_add']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'atype': ['multi_head_loc', 'multi_head_loc']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2,
-         {'atype': ['multi_head_multi_res_loc', 'multi_head_multi_res_loc']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'han_type': 'noatt'}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'han_type': 'add'}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'han_type': 'dot'}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'han_type': 'coverage'}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'han_type': 'coverage_location'}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'han_type': 'location2d'}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'han_type': 'location_recurrent'}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'han_type': 'multi_head_dot'}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'han_type': 'multi_head_add'}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'han_type': 'multi_head_loc'}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'han_type': 'multi_head_multi_res_loc'}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'mtlalpha': 0.0}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'mtlalpha': 1.0}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'sampling_probability': 0.5}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'ctc_type': "builtin"}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'ctc_weight': 0.0}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'ctc_weight': 1.0}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'context_residual': True}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'grad_noise': True}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'report_cer': True}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'report_wer': True}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'report_cer': True, 'report_wer': True}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'report_cer': True, 'report_wer': True, 'mtlalpha': 0.0}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'report_cer': True, 'report_wer': True, 'mtlalpha': 1.0}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, {'share_ctc': True}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'elayers': [2, 3, 4], 'dlayers': 2}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'etype': ['grup', 'grup', 'grup']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'etype': ['lstmp', 'lstmp', 'lstmp']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'etype': ['bgrup', 'bgrup', 'bgrup']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'etype': ['blstmp', 'blstmp', 'blstmp']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'etype': ['bgru', 'bgru', 'bgru']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'etype': ['blstm', 'blstm', 'blstm']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'etype': ['vgggru', 'vgggru', 'vgggru']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'etype': ['vgggrup', 'vgggrup', 'vgggrup']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'etype': ['vgglstm', 'vgglstm', 'vgglstm']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'etype': ['vgglstmp', 'vgglstmp', 'vgglstmp']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'etype': ['vggbgru', 'vggbgru', 'vggbgru']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'etype': ['vggbgrup', 'vggbgrup', 'vggbgrup']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'etype': ['vggblstm', 'vggblstm', 'vggblstm']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'etype': ['blstmp', 'vggblstmp', 'vggblstmp']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'dtype': 'gru'}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'atype': ['noatt', 'noatt', 'noatt']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'atype': ['add', 'add', 'add']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'atype': ['dot', 'dot', 'dot']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'atype': ['coverage', 'coverage', 'coverage']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3,
-         {'atype': ['coverage_location', 'coverage_location', 'coverage_location']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'atype': ['location2d', 'location2d', 'location2d']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3,
-         {'atype': ['location_recurrent', 'location_recurrent', 'location_recurrent']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3,
-         {'atype': ['multi_head_dot', 'multi_head_dot', 'multi_head_dot']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3,
-         {'atype': ['multi_head_add', 'multi_head_add', 'multi_head_add']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3,
-         {'atype': ['multi_head_loc', 'multi_head_loc', 'multi_head_loc']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3,
-         {'atype': ['multi_head_multi_res_loc', 'multi_head_multi_res_loc', 'multi_head_multi_res_loc']}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'han_type': 'noatt'}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'han_type': 'add'}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'han_type': 'dot'}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'han_type': 'coverage'}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'han_type': 'coverage_location'}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'han_type': 'location2d'}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'han_type': 'location_recurrent'}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'han_type': 'multi_head_dot'}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'han_type': 'multi_head_add'}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'han_type': 'multi_head_loc'}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'han_type': 'multi_head_multi_res_loc'}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'mtlalpha': 0.0}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'mtlalpha': 1.0}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'sampling_probability': 0.5}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'ctc_type': "builtin"}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'ctc_weight': 0.0}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'ctc_weight': 1.0}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'context_residual': True}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'grad_noise': True}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'report_cer': True}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'report_wer': True}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'report_cer': True, 'report_wer': True}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'report_cer': True, 'report_wer': True, 'mtlalpha': 0.0}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'report_cer': True, 'report_wer': True, 'mtlalpha': 1.0}),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, {'share_ctc': True})
-    ]
+    "module, num_encs, model_dict",
+    [
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"elayers": [2, 3], "dlayers": 2},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"etype": ["grup", "grup"]}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"etype": ["lstmp", "lstmp"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"etype": ["bgrup", "bgrup"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"etype": ["blstmp", "blstmp"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"etype": ["bgru", "bgru"]}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"etype": ["blstm", "blstm"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"etype": ["vgggru", "vgggru"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"etype": ["vgggrup", "vgggrup"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"etype": ["vgglstm", "vgglstm"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"etype": ["vgglstmp", "vgglstmp"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"etype": ["vggbgru", "vggbgru"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"etype": ["vggbgrup", "vggbgrup"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"etype": ["vggblstm", "vggblstm"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"etype": ["blstmp", "vggblstmp"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"dtype": "gru"}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"atype": ["noatt", "noatt"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"atype": ["add", "add"]}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"atype": ["dot", "dot"]}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"atype": ["coverage", "coverage"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"atype": ["coverage_location", "coverage_location"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"atype": ["location2d", "location2d"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"atype": ["location_recurrent", "location_recurrent"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"atype": ["multi_head_dot", "multi_head_dot"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"atype": ["multi_head_add", "multi_head_add"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"atype": ["multi_head_loc", "multi_head_loc"]},),
+        (
+            "espnet.nets.pytorch_backend.e2e_asr_mulenc",
+            2,
+            {"atype": ["multi_head_multi_res_loc", "multi_head_multi_res_loc"]},
+        ),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"han_type": "noatt"}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"han_type": "add"}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"han_type": "dot"}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"han_type": "coverage"}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"han_type": "coverage_location"},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"han_type": "location2d"}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"han_type": "location_recurrent"},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"han_type": "multi_head_dot"},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"han_type": "multi_head_add"},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"han_type": "multi_head_loc"},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"han_type": "multi_head_multi_res_loc"},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"mtlalpha": 0.0}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"mtlalpha": 1.0}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"sampling_probability": 0.5},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"ctc_type": "builtin"}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"ctc_weight": 0.0}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"ctc_weight": 1.0}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"context_residual": True}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"grad_noise": True}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"report_cer": True}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"report_wer": True}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"report_cer": True, "report_wer": True},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"report_cer": True, "report_wer": True, "mtlalpha": 0.0},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"report_cer": True, "report_wer": True, "mtlalpha": 1.0},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, {"share_ctc": True}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"elayers": [2, 3, 4], "dlayers": 2},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"etype": ["grup", "grup", "grup"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"etype": ["lstmp", "lstmp", "lstmp"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"etype": ["bgrup", "bgrup", "bgrup"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"etype": ["blstmp", "blstmp", "blstmp"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"etype": ["bgru", "bgru", "bgru"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"etype": ["blstm", "blstm", "blstm"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"etype": ["vgggru", "vgggru", "vgggru"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"etype": ["vgggrup", "vgggrup", "vgggrup"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"etype": ["vgglstm", "vgglstm", "vgglstm"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"etype": ["vgglstmp", "vgglstmp", "vgglstmp"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"etype": ["vggbgru", "vggbgru", "vggbgru"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"etype": ["vggbgrup", "vggbgrup", "vggbgrup"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"etype": ["vggblstm", "vggblstm", "vggblstm"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"etype": ["blstmp", "vggblstmp", "vggblstmp"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"dtype": "gru"}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"atype": ["noatt", "noatt", "noatt"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"atype": ["add", "add", "add"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"atype": ["dot", "dot", "dot"]},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"atype": ["coverage", "coverage", "coverage"]},),
+        (
+            "espnet.nets.pytorch_backend.e2e_asr_mulenc",
+            3,
+            {"atype": ["coverage_location", "coverage_location", "coverage_location"]},
+        ),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"atype": ["location2d", "location2d", "location2d"]},),
+        (
+            "espnet.nets.pytorch_backend.e2e_asr_mulenc",
+            3,
+            {"atype": ["location_recurrent", "location_recurrent", "location_recurrent"]},
+        ),
+        (
+            "espnet.nets.pytorch_backend.e2e_asr_mulenc",
+            3,
+            {"atype": ["multi_head_dot", "multi_head_dot", "multi_head_dot"]},
+        ),
+        (
+            "espnet.nets.pytorch_backend.e2e_asr_mulenc",
+            3,
+            {"atype": ["multi_head_add", "multi_head_add", "multi_head_add"]},
+        ),
+        (
+            "espnet.nets.pytorch_backend.e2e_asr_mulenc",
+            3,
+            {"atype": ["multi_head_loc", "multi_head_loc", "multi_head_loc"]},
+        ),
+        (
+            "espnet.nets.pytorch_backend.e2e_asr_mulenc",
+            3,
+            {"atype": ["multi_head_multi_res_loc", "multi_head_multi_res_loc", "multi_head_multi_res_loc"]},
+        ),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"han_type": "noatt"}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"han_type": "add"}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"han_type": "dot"}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"han_type": "coverage"}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"han_type": "coverage_location"},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"han_type": "location2d"}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"han_type": "location_recurrent"},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"han_type": "multi_head_dot"},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"han_type": "multi_head_add"},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"han_type": "multi_head_loc"},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"han_type": "multi_head_multi_res_loc"},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"mtlalpha": 0.0}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"mtlalpha": 1.0}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"sampling_probability": 0.5},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"ctc_type": "builtin"}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"ctc_weight": 0.0}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"ctc_weight": 1.0}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"context_residual": True}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"grad_noise": True}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"report_cer": True}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"report_wer": True}),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"report_cer": True, "report_wer": True},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"report_cer": True, "report_wer": True, "mtlalpha": 0.0},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"report_cer": True, "report_wer": True, "mtlalpha": 1.0},),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, {"share_ctc": True}),
+    ],
 )
 def test_model_trainable_and_decodable(module, num_encs, model_dict):
     args = make_arg(num_encs=num_encs, **model_dict)
@@ -254,18 +277,20 @@ def test_model_trainable_and_decodable(module, num_encs, model_dict):
     # test attention plot
     dummy_json = make_dummy_json(num_encs, [10, 20], [10, 20], idim=40, odim=5, num_inputs=num_encs)
     batchset = make_batchset(dummy_json, 2, 2 ** 10, 2 ** 10, shortest_first=True)
-    att_ws = model.calculate_all_attentions(*convert_batch(
-        batchset[0], "pytorch", idim=40, odim=5, num_inputs=num_encs))
+    att_ws = model.calculate_all_attentions(
+        *convert_batch(batchset[0], "pytorch", idim=40, odim=5, num_inputs=num_encs)
+    )
     from espnet.asr.asr_utils import PlotAttentionReport
+
     tmpdir = tempfile.mkdtemp()
     plot = PlotAttentionReport(model.calculate_all_attentions, batchset[0], tmpdir, None, None, None)
     for i in range(num_encs):
         # att-encoder
         att_w = plot.get_attention_weight(0, att_ws[i][0])
-        plot._plot_and_save_attention(att_w, '{}/att{}.png'.format(tmpdir, i))
+        plot._plot_and_save_attention(att_w, "{}/att{}.png".format(tmpdir, i))
     # han
     att_w = plot.get_attention_weight(0, att_ws[num_encs][0])
-    plot._plot_and_save_attention(att_w, '{}/han.png'.format(tmpdir), han_mode=True)
+    plot._plot_and_save_attention(att_w, "{}/han.png".format(tmpdir), han_mode=True)
 
     # test decodable
     with torch.no_grad(), chainer.no_backprop_mode():
@@ -276,17 +301,13 @@ def test_model_trainable_and_decodable(module, num_encs, model_dict):
             model.recognize_batch(batch_in_data, args, args.char_list)  # batch decodable
 
 
-@pytest.mark.parametrize(
-    "module, num_encs", [
-        ("pytorch", 2),
-        ("pytorch", 3)
-    ]
-)
+@pytest.mark.parametrize("module, num_encs", [("pytorch", 2), ("pytorch", 3)])
 def test_gradient_noise_injection(module, num_encs):
     args = make_arg(num_encs=num_encs, grad_noise=True)
     args_org = make_arg(num_encs=num_encs)
     dummy_json = make_dummy_json(num_encs, [10, 20], [10, 20], idim=20, odim=5, num_inputs=num_encs)
     import espnet.nets.pytorch_backend.e2e_asr_mulenc as m
+
     batchset = make_batchset(dummy_json, 2, 2 ** 10, 2 ** 10, shortest_first=True)
     model = m.E2E([20 for _ in range(num_encs)], 5, args)
     model_org = m.E2E([20 for _ in range(num_encs)], 5, args_org)
@@ -300,16 +321,12 @@ def test_gradient_noise_injection(module, num_encs):
         assert grad[0] != grad_org[0]
 
 
-@pytest.mark.parametrize(
-    "module, num_encs", [
-        ("pytorch", 2),
-        ("pytorch", 3)
-    ]
-)
+@pytest.mark.parametrize("module, num_encs", [("pytorch", 2), ("pytorch", 3)])
 def test_sortagrad_trainable(module, num_encs):
     args = make_arg(num_encs=num_encs, sortagrad=1)
     dummy_json = make_dummy_json(6, [10, 20], [10, 20], idim=20, odim=5, num_inputs=num_encs)
     import espnet.nets.pytorch_backend.e2e_asr_mulenc as m
+
     batchset = make_batchset(dummy_json, 2, 2 ** 10, 2 ** 10, shortest_first=True)
     model = m.E2E([20 for _ in range(num_encs)], 5, args)
     num_utts = 0
@@ -323,25 +340,21 @@ def test_sortagrad_trainable(module, num_encs):
         model.recognize(in_data, args, args.char_list)
 
 
-@pytest.mark.parametrize(
-    "module, num_encs", [
-        ("pytorch", 2),
-        ("pytorch", 3)
-    ]
-)
+@pytest.mark.parametrize("module, num_encs", [("pytorch", 2), ("pytorch", 3)])
 def test_sortagrad_trainable_with_batch_bins(module, num_encs):
     args = make_arg(num_encs=num_encs, sortagrad=1)
     idim = 20
     odim = 5
     dummy_json = make_dummy_json(4, [10, 20], [10, 20], idim=idim, odim=odim, num_inputs=num_encs)
     import espnet.nets.pytorch_backend.e2e_asr_mulenc as m
+
     batch_elems = 2000
     batchset = make_batchset(dummy_json, batch_bins=batch_elems, shortest_first=True)
     for batch in batchset:
         n = 0
         for uttid, info in batch:
-            ilen = int(info['input'][0]['shape'][0])  # based on the first input
-            olen = int(info['output'][0]['shape'][0])
+            ilen = int(info["input"][0]["shape"][0])  # based on the first input
+            olen = int(info["output"][0]["shape"][0])
             n += ilen * idim + olen * odim
         assert olen < batch_elems
 
@@ -354,30 +367,25 @@ def test_sortagrad_trainable_with_batch_bins(module, num_encs):
         model.recognize(in_data, args, args.char_list)
 
 
-@pytest.mark.parametrize(
-    "module, num_encs", [
-        ("pytorch", 2),
-        ("pytorch", 3)
-    ]
-)
+@pytest.mark.parametrize("module, num_encs", [("pytorch", 2), ("pytorch", 3)])
 def test_sortagrad_trainable_with_batch_frames(module, num_encs):
     args = make_arg(num_encs=num_encs, sortagrad=1)
     idim = 20
     odim = 5
     dummy_json = make_dummy_json(4, [10, 20], [10, 20], idim=idim, odim=odim, num_inputs=num_encs)
     import espnet.nets.pytorch_backend.e2e_asr_mulenc as m
+
     batch_frames_in = 50
     batch_frames_out = 50
-    batchset = make_batchset(dummy_json,
-                             batch_frames_in=batch_frames_in,
-                             batch_frames_out=batch_frames_out,
-                             shortest_first=True)
+    batchset = make_batchset(
+        dummy_json, batch_frames_in=batch_frames_in, batch_frames_out=batch_frames_out, shortest_first=True,
+    )
     for batch in batchset:
         i = 0
         o = 0
         for uttid, info in batch:
-            i += int(info['input'][0]['shape'][0])  # based on the first input
-            o += int(info['output'][0]['shape'][0])
+            i += int(info["input"][0]["shape"][0])  # based on the first input
+            o += int(info["output"][0]["shape"][0])
         assert i <= batch_frames_in
         assert o <= batch_frames_out
 
@@ -397,32 +405,33 @@ def init_torch_weight_const(m, val):
 
 
 @pytest.mark.parametrize(
-    "module, num_encs, atype", [
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, 'noatt'),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, 'dot'),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, 'add'),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, 'location'),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, 'coverage'),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, 'coverage_location'),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, 'location2d'),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, 'location_recurrent'),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, 'multi_head_dot'),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, 'multi_head_add'),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, 'multi_head_loc'),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 2, 'multi_head_multi_res_loc'),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, 'noatt'),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, 'dot'),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, 'add'),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, 'location'),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, 'coverage'),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, 'coverage_location'),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, 'location2d'),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, 'location_recurrent'),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, 'multi_head_dot'),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, 'multi_head_add'),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, 'multi_head_loc'),
-        ('espnet.nets.pytorch_backend.e2e_asr_mulenc', 3, 'multi_head_multi_res_loc')
-    ]
+    "module, num_encs, atype",
+    [
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, "noatt"),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, "dot"),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, "add"),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, "location"),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, "coverage"),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, "coverage_location"),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, "location2d"),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, "location_recurrent"),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, "multi_head_dot"),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, "multi_head_add"),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, "multi_head_loc"),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2, "multi_head_multi_res_loc"),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, "noatt"),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, "dot"),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, "add"),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, "location"),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, "coverage"),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, "coverage_location"),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, "location2d"),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, "location_recurrent"),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, "multi_head_dot"),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, "multi_head_add"),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, "multi_head_loc"),
+        ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3, "multi_head_multi_res_loc"),
+    ],
 )
 def test_calculate_all_attentions(module, num_encs, atype):
     m = importlib.import_module(module)
@@ -436,12 +445,10 @@ def test_calculate_all_attentions(module, num_encs, atype):
         print(att_ws[num_encs][0].shape)  # han
 
 
-@pytest.mark.parametrize(
-    "num_encs", [2, 3]
-)
+@pytest.mark.parametrize("num_encs", [2, 3])
 def test_torch_save_and_load(num_encs):
-    m = importlib.import_module('espnet.nets.pytorch_backend.e2e_asr_mulenc')
-    utils = importlib.import_module('espnet.asr.asr_utils')
+    m = importlib.import_module("espnet.nets.pytorch_backend.e2e_asr_mulenc")
+    utils = importlib.import_module("espnet.asr.asr_utils")
     args = make_arg(num_encs=num_encs)
     model = m.E2E([40 for _ in range(num_encs)], 5, args)
     # initialize randomly
@@ -463,10 +470,10 @@ def test_torch_save_and_load(num_encs):
 
 
 @pytest.mark.skipif(not torch.cuda.is_available() and not chainer.cuda.available, reason="gpu required")
-@pytest.mark.parametrize("module, num_encs", [
-    ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2),
-    ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3),
-])
+@pytest.mark.parametrize(
+    "module, num_encs",
+    [("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2), ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3)],
+)
 def test_gpu_trainable(module, num_encs):
     m = importlib.import_module(module)
     args = make_arg(num_encs=num_encs)
@@ -479,10 +486,10 @@ def test_gpu_trainable(module, num_encs):
 
 
 @pytest.mark.skipif(torch.cuda.device_count() < 2, reason="multi gpu required")
-@pytest.mark.parametrize("module, num_encs", [
-    ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2),
-    ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3),
-])
+@pytest.mark.parametrize(
+    "module, num_encs",
+    [("espnet.nets.pytorch_backend.e2e_asr_mulenc", 2), ("espnet.nets.pytorch_backend.e2e_asr_mulenc", 3)],
+)
 def test_multi_gpu_trainable(module, num_encs):
     m = importlib.import_module(module)
     ngpu = 2
@@ -493,5 +500,5 @@ def test_multi_gpu_trainable(module, num_encs):
         model = torch.nn.DataParallel(model, device_ids)
         batch = prepare_inputs("pytorch", num_encs, is_cuda=True)
         model.cuda()
-        loss = 1. / ngpu * model(*batch)
+        loss = 1.0 / ngpu * model(*batch)
         loss.backward(loss.new_ones(ngpu))  # trainable

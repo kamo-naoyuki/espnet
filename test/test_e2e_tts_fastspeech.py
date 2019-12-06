@@ -22,8 +22,7 @@ from espnet.nets.pytorch_backend.fastspeech.length_regulator import LengthRegula
 from espnet.nets.pytorch_backend.nets_utils import pad_list
 
 
-def prepare_inputs(idim, odim, ilens, olens, spk_embed_dim=None,
-                   device=torch.device('cpu')):
+def prepare_inputs(idim, odim, ilens, olens, spk_embed_dim=None, device=torch.device("cpu")):
     xs = [np.random.randint(0, idim, l) for l in ilens]
     ys = [np.random.randn(l, odim) for l in olens]
     ilens = torch.LongTensor(ilens).to(device)
@@ -32,7 +31,7 @@ def prepare_inputs(idim, odim, ilens, olens, spk_embed_dim=None,
     ys = pad_list([torch.from_numpy(y).float() for y in ys], 0).to(device)
     labels = ys.new_zeros(ys.size(0), ys.size(1))
     for i, l in enumerate(olens):
-        labels[i, l - 1:] = 1
+        labels[i, l - 1 :] = 1
     batch = {
         "xs": xs,
         "ilens": ilens,
@@ -96,7 +95,7 @@ def make_transformer_args(**kwargs):
         num_heads_applied_guided_attn=2,
         num_layers_applied_guided_attn=2,
         guided_attn_loss_sigma=0.4,
-        modules_applied_guided_attn=["encoder", "decoder", "encoder-decoder"]
+        modules_applied_guided_attn=["encoder", "decoder", "encoder-decoder"],
     )
     defaults.update(kwargs)
     return defaults
@@ -148,7 +147,8 @@ def make_feedforward_transformer_args(**kwargs):
 
 
 @pytest.mark.parametrize(
-    "model_dict", [
+    "model_dict",
+    [
         ({}),
         ({"spk_embed_dim": 16, "spk_embed_integration_type": "add"}),
         ({"spk_embed_dim": 16, "spk_embed_integration_type": "concat"}),
@@ -171,7 +171,8 @@ def make_feedforward_transformer_args(**kwargs):
         ({"reduction_factor": 3}),
         ({"reduction_factor": 4}),
         ({"reduction_factor": 5}),
-    ])
+    ],
+)
 def test_fastspeech_trainable_and_decodable(model_dict):
     # make args
     idim, odim = 10, 25
@@ -187,9 +188,10 @@ def test_fastspeech_trainable_and_decodable(model_dict):
     teacher_model = Transformer(idim, odim, Namespace(**teacher_model_args))
     tmpdir = tempfile.mkdtemp(prefix="tmp_", dir="/tmp")
     torch.save(teacher_model.state_dict(), tmpdir + "/model.dummy.best")
-    with open(tmpdir + "/model.json", 'wb') as f:
-        f.write(json.dumps((idim, odim, teacher_model_args),
-                           indent=4, ensure_ascii=False, sort_keys=True).encode('utf_8'))
+    with open(tmpdir + "/model.json", "wb") as f:
+        f.write(
+            json.dumps((idim, odim, teacher_model_args), indent=4, ensure_ascii=False, sort_keys=True,).encode("utf_8")
+        )
 
     # define model
     model_args["teacher_model"] = tmpdir + "/model.dummy.best"
@@ -209,7 +211,7 @@ def test_fastspeech_trainable_and_decodable(model_dict):
             spemb = None
         else:
             spemb = batch["spembs"][0]
-        model.inference(batch["xs"][0][:batch["ilens"][0]], None, spemb=spemb)
+        model.inference(batch["xs"][0][: batch["ilens"][0]], None, spemb=spemb)
         model.calculate_all_attentions(**batch)
 
     # remove tmpdir
@@ -219,7 +221,8 @@ def test_fastspeech_trainable_and_decodable(model_dict):
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="gpu required")
 @pytest.mark.parametrize(
-    "model_dict", [
+    "model_dict",
+    [
         ({}),
         ({"spk_embed_dim": 16, "spk_embed_integration_type": "add"}),
         ({"spk_embed_dim": 16, "spk_embed_integration_type": "concat"}),
@@ -234,7 +237,8 @@ def test_fastspeech_trainable_and_decodable(model_dict):
         ({"encoder_concat_after": True, "decoder_concat_after": True}),
         ({"transfer_encoder_from_teacher": True}),
         ({"transfer_encoder_from_teacher": True, "transferred_encoder_module": "embed"}),
-    ])
+    ],
+)
 def test_fastspeech_gpu_trainable_and_decodable(model_dict):
     # make args
     idim, odim = 10, 25
@@ -244,16 +248,17 @@ def test_fastspeech_gpu_trainable_and_decodable(model_dict):
     # setup batch
     ilens = [10, 5]
     olens = [20, 15]
-    device = torch.device('cuda')
+    device = torch.device("cuda")
     batch = prepare_inputs(idim, odim, ilens, olens, model_args["spk_embed_dim"], device=device)
 
     # define teacher model and save it
     teacher_model = Transformer(idim, odim, Namespace(**teacher_model_args))
     tmpdir = tempfile.mkdtemp(prefix="tmp_", dir="/tmp")
     torch.save(teacher_model.state_dict(), tmpdir + "/model.dummy.best")
-    with open(tmpdir + "/model.json", 'wb') as f:
-        f.write(json.dumps((idim, odim, teacher_model_args),
-                           indent=4, ensure_ascii=False, sort_keys=True).encode('utf_8'))
+    with open(tmpdir + "/model.json", "wb") as f:
+        f.write(
+            json.dumps((idim, odim, teacher_model_args), indent=4, ensure_ascii=False, sort_keys=True,).encode("utf_8")
+        )
 
     # define model
     model_args["teacher_model"] = tmpdir + "/model.dummy.best"
@@ -274,7 +279,7 @@ def test_fastspeech_gpu_trainable_and_decodable(model_dict):
             spemb = None
         else:
             spemb = batch["spembs"][0]
-        model.inference(batch["xs"][0][:batch["ilens"][0]], None, spemb=spemb)
+        model.inference(batch["xs"][0][: batch["ilens"][0]], None, spemb=spemb)
         model.calculate_all_attentions(**batch)
 
     # remove tmpdir
@@ -284,7 +289,8 @@ def test_fastspeech_gpu_trainable_and_decodable(model_dict):
 
 @pytest.mark.skipif(torch.cuda.device_count() < 2, reason="multi gpu required")
 @pytest.mark.parametrize(
-    "model_dict", [
+    "model_dict",
+    [
         ({}),
         ({"spk_embed_dim": 16, "spk_embed_integration_type": "add"}),
         ({"spk_embed_dim": 16, "spk_embed_integration_type": "concat"}),
@@ -299,7 +305,8 @@ def test_fastspeech_gpu_trainable_and_decodable(model_dict):
         ({"encoder_concat_after": True, "decoder_concat_after": True}),
         ({"transfer_encoder_from_teacher": True}),
         ({"transfer_encoder_from_teacher": True, "transferred_encoder_module": "embed"}),
-    ])
+    ],
+)
 def test_fastspeech_multi_gpu_trainable(model_dict):
     # make args
     idim, odim = 10, 25
@@ -309,16 +316,17 @@ def test_fastspeech_multi_gpu_trainable(model_dict):
     # setup batch
     ilens = [10, 5]
     olens = [20, 15]
-    device = torch.device('cuda')
+    device = torch.device("cuda")
     batch = prepare_inputs(idim, odim, ilens, olens, model_args["spk_embed_dim"], device=device)
 
     # define teacher model and save it
     teacher_model = Transformer(idim, odim, Namespace(**teacher_model_args))
     tmpdir = tempfile.mkdtemp(prefix="tmp_", dir="/tmp")
     torch.save(teacher_model.state_dict(), tmpdir + "/model.dummy.best")
-    with open(tmpdir + "/model.json", 'wb') as f:
-        f.write(json.dumps((idim, odim, teacher_model_args),
-                           indent=4, ensure_ascii=False, sort_keys=True).encode('utf_8'))
+    with open(tmpdir + "/model.json", "wb") as f:
+        f.write(
+            json.dumps((idim, odim, teacher_model_args), indent=4, ensure_ascii=False, sort_keys=True,).encode("utf_8")
+        )
 
     # define model
     ngpu = 2
@@ -341,17 +349,25 @@ def test_fastspeech_multi_gpu_trainable(model_dict):
 
 
 @pytest.mark.parametrize(
-    "model_dict", [
+    "model_dict",
+    [
         ({"transfer_encoder_from_teacher": True}),
         ({"transfer_encoder_from_teacher": True, "transferred_encoder_module": "embed"}),
         ({"transfer_encoder_from_teacher": True, "use_scaled_pos_enc": False}),
         ({"transfer_encoder_from_teacher": True, "encoder_normalize_before": False}),
         ({"transfer_encoder_from_teacher": True, "decoder_normalize_before": False}),
-        ({"transfer_encoder_from_teacher": True, "encoder_normalize_before": False, "decoder_normalize_before": False}),
+        (
+            {
+                "transfer_encoder_from_teacher": True,
+                "encoder_normalize_before": False,
+                "decoder_normalize_before": False,
+            }
+        ),
         ({"transfer_encoder_from_teacher": True, "encoder_concat_after": True}),
         ({"transfer_encoder_from_teacher": True, "decoder_concat_after": True}),
         ({"transfer_encoder_from_teacher": True, "encoder_concat_after": True, "decoder_concat_after": True}),
-    ])
+    ],
+)
 def test_initialization(model_dict):
     # make args
     idim, odim = 10, 25
@@ -362,9 +378,10 @@ def test_initialization(model_dict):
     teacher_model = Transformer(idim, odim, Namespace(**teacher_model_args))
     tmpdir = tempfile.mkdtemp(prefix="tmp_", dir="/tmp")
     torch.save(teacher_model.state_dict(), tmpdir + "/model.dummy.best")
-    with open(tmpdir + "/model.json", 'wb') as f:
-        f.write(json.dumps((idim, odim, teacher_model_args),
-                           indent=4, ensure_ascii=False, sort_keys=True).encode('utf_8'))
+    with open(tmpdir + "/model.json", "wb") as f:
+        f.write(
+            json.dumps((idim, odim, teacher_model_args), indent=4, ensure_ascii=False, sort_keys=True,).encode("utf_8")
+        )
 
     # define model
     model_args["teacher_model"] = tmpdir + "/model.dummy.best"
@@ -376,8 +393,7 @@ def test_initialization(model_dict):
             np.testing.assert_array_equal(p1.data.cpu().numpy(), p2.data.cpu().numpy())
     else:
         np.testing.assert_array_equal(
-            model.encoder.embed[0].weight.data.cpu().numpy(),
-            model.teacher.encoder.embed[0].weight.data.cpu().numpy()
+            model.encoder.embed[0].weight.data.cpu().numpy(), model.teacher.encoder.embed[0].weight.data.cpu().numpy(),
         )
 
     # remove tmpdir

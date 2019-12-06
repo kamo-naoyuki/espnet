@@ -20,11 +20,13 @@ class ModuleInfo:
 
 def get_parser():
     parser = configargparse.ArgumentParser(
-        description='generate RST from argparse options',
+        description="generate RST from argparse options",
         config_file_parser_class=configargparse.YAMLConfigFileParser,
-        formatter_class=configargparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('src', type=str, nargs='+',
-                        help='source python files that contain get_parser() func')
+        formatter_class=configargparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "src", type=str, nargs="+", help="source python files that contain get_parser() func",
+    )
     return parser
 
 
@@ -53,7 +55,8 @@ print()
 for m in modinfo:
     cmd = m.path.name
     sep = "~" * len(cmd)
-    print(f"""
+    print(
+        f"""
 
 .. _{cmd}:
 
@@ -65,4 +68,5 @@ for m in modinfo:
    :func: get_parser
    :prog: {cmd}
 
-""")
+"""
+    )

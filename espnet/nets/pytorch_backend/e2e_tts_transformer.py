@@ -81,10 +81,10 @@ class TTSPlot(PlotAttentionReport):
 
         """
         import matplotlib.pyplot as plt
+
         for name, att_ws in attn_dict.items():
             for idx, att_w in enumerate(att_ws):
-                filename = "%s/%s.%s.%s" % (
-                    outdir, data[idx][0], name, suffix)
+                filename = "%s/%s.%s.%s" % (outdir, data[idx][0], name, suffix)
                 if "fbank" in name:
                     fig = plt.Figure()
                     ax = fig.subplots(1, 1)
@@ -113,119 +113,217 @@ class Transformer(TTSInterface, torch.nn.Module):
         """Add model-specific arguments to the parser."""
         group = parser.add_argument_group("transformer model setting")
         # network structure related
-        group.add_argument("--embed-dim", default=512, type=int,
-                           help="Dimension of character embedding in encoder prenet")
-        group.add_argument("--eprenet-conv-layers", default=3, type=int,
-                           help="Number of encoder prenet convolution layers")
-        group.add_argument("--eprenet-conv-chans", default=256, type=int,
-                           help="Number of encoder prenet convolution channels")
-        group.add_argument("--eprenet-conv-filts", default=5, type=int,
-                           help="Filter size of encoder prenet convolution")
-        group.add_argument("--dprenet-layers", default=2, type=int,
-                           help="Number of decoder prenet layers")
-        group.add_argument("--dprenet-units", default=256, type=int,
-                           help="Number of decoder prenet hidden units")
-        group.add_argument("--elayers", default=3, type=int,
-                           help="Number of encoder layers")
-        group.add_argument("--eunits", default=1536, type=int,
-                           help="Number of encoder hidden units")
-        group.add_argument("--adim", default=384, type=int,
-                           help="Number of attention transformation dimensions")
-        group.add_argument("--aheads", default=4, type=int,
-                           help="Number of heads for multi head attention")
-        group.add_argument("--dlayers", default=3, type=int,
-                           help="Number of decoder layers")
-        group.add_argument("--dunits", default=1536, type=int,
-                           help="Number of decoder hidden units")
-        group.add_argument("--positionwise-layer-type", default="linear", type=str,
-                           choices=["linear", "conv1d", "conv1d-linear"],
-                           help="Positionwise layer type.")
-        group.add_argument("--positionwise-conv-kernel-size", default=1, type=int,
-                           help="Kernel size of positionwise conv1d layer")
-        group.add_argument("--postnet-layers", default=5, type=int,
-                           help="Number of postnet layers")
-        group.add_argument("--postnet-chans", default=256, type=int,
-                           help="Number of postnet channels")
-        group.add_argument("--postnet-filts", default=5, type=int,
-                           help="Filter size of postnet")
-        group.add_argument("--use-scaled-pos-enc", default=True, type=strtobool,
-                           help="Use trainable scaled positional encoding instead of the fixed scale one.")
-        group.add_argument("--use-batch-norm", default=True, type=strtobool,
-                           help="Whether to use batch normalization")
-        group.add_argument("--encoder-normalize-before", default=False, type=strtobool,
-                           help="Whether to apply layer norm before encoder block")
-        group.add_argument("--decoder-normalize-before", default=False, type=strtobool,
-                           help="Whether to apply layer norm before decoder block")
-        group.add_argument("--encoder-concat-after", default=False, type=strtobool,
-                           help="Whether to concatenate attention layer's input and output in encoder")
-        group.add_argument("--decoder-concat-after", default=False, type=strtobool,
-                           help="Whether to concatenate attention layer's input and output in decoder")
-        group.add_argument("--reduction-factor", default=1, type=int,
-                           help="Reduction factor")
-        group.add_argument("--spk-embed-dim", default=None, type=int,
-                           help="Number of speaker embedding dimensions")
-        group.add_argument("--spk-embed-integration-type", type=str, default="add",
-                           choices=["add", "concat"],
-                           help="How to integrate speaker embedding")
+        group.add_argument(
+            "--embed-dim", default=512, type=int, help="Dimension of character embedding in encoder prenet",
+        )
+        group.add_argument(
+            "--eprenet-conv-layers", default=3, type=int, help="Number of encoder prenet convolution layers",
+        )
+        group.add_argument(
+            "--eprenet-conv-chans", default=256, type=int, help="Number of encoder prenet convolution channels",
+        )
+        group.add_argument(
+            "--eprenet-conv-filts", default=5, type=int, help="Filter size of encoder prenet convolution",
+        )
+        group.add_argument(
+            "--dprenet-layers", default=2, type=int, help="Number of decoder prenet layers",
+        )
+        group.add_argument(
+            "--dprenet-units", default=256, type=int, help="Number of decoder prenet hidden units",
+        )
+        group.add_argument("--elayers", default=3, type=int, help="Number of encoder layers")
+        group.add_argument("--eunits", default=1536, type=int, help="Number of encoder hidden units")
+        group.add_argument(
+            "--adim", default=384, type=int, help="Number of attention transformation dimensions",
+        )
+        group.add_argument(
+            "--aheads", default=4, type=int, help="Number of heads for multi head attention",
+        )
+        group.add_argument("--dlayers", default=3, type=int, help="Number of decoder layers")
+        group.add_argument("--dunits", default=1536, type=int, help="Number of decoder hidden units")
+        group.add_argument(
+            "--positionwise-layer-type",
+            default="linear",
+            type=str,
+            choices=["linear", "conv1d", "conv1d-linear"],
+            help="Positionwise layer type.",
+        )
+        group.add_argument(
+            "--positionwise-conv-kernel-size", default=1, type=int, help="Kernel size of positionwise conv1d layer",
+        )
+        group.add_argument("--postnet-layers", default=5, type=int, help="Number of postnet layers")
+        group.add_argument("--postnet-chans", default=256, type=int, help="Number of postnet channels")
+        group.add_argument("--postnet-filts", default=5, type=int, help="Filter size of postnet")
+        group.add_argument(
+            "--use-scaled-pos-enc",
+            default=True,
+            type=strtobool,
+            help="Use trainable scaled positional encoding instead of the fixed scale one.",
+        )
+        group.add_argument(
+            "--use-batch-norm", default=True, type=strtobool, help="Whether to use batch normalization",
+        )
+        group.add_argument(
+            "--encoder-normalize-before",
+            default=False,
+            type=strtobool,
+            help="Whether to apply layer norm before encoder block",
+        )
+        group.add_argument(
+            "--decoder-normalize-before",
+            default=False,
+            type=strtobool,
+            help="Whether to apply layer norm before decoder block",
+        )
+        group.add_argument(
+            "--encoder-concat-after",
+            default=False,
+            type=strtobool,
+            help="Whether to concatenate attention layer's input and output in encoder",
+        )
+        group.add_argument(
+            "--decoder-concat-after",
+            default=False,
+            type=strtobool,
+            help="Whether to concatenate attention layer's input and output in decoder",
+        )
+        group.add_argument("--reduction-factor", default=1, type=int, help="Reduction factor")
+        group.add_argument(
+            "--spk-embed-dim", default=None, type=int, help="Number of speaker embedding dimensions",
+        )
+        group.add_argument(
+            "--spk-embed-integration-type",
+            type=str,
+            default="add",
+            choices=["add", "concat"],
+            help="How to integrate speaker embedding",
+        )
         # training related
-        group.add_argument("--transformer-init", type=str, default="pytorch",
-                           choices=["pytorch", "xavier_uniform", "xavier_normal",
-                                    "kaiming_uniform", "kaiming_normal"],
-                           help="How to initialize transformer parameters")
-        group.add_argument("--initial-encoder-alpha", type=float, default=1.0,
-                           help="Initial alpha value in encoder's ScaledPositionalEncoding")
-        group.add_argument("--initial-decoder-alpha", type=float, default=1.0,
-                           help="Initial alpha value in decoder's ScaledPositionalEncoding")
-        group.add_argument("--transformer-lr", default=1.0, type=float,
-                           help="Initial value of learning rate")
-        group.add_argument("--transformer-warmup-steps", default=4000, type=int,
-                           help="Optimizer warmup steps")
-        group.add_argument("--transformer-enc-dropout-rate", default=0.1, type=float,
-                           help="Dropout rate for transformer encoder except for attention")
-        group.add_argument("--transformer-enc-positional-dropout-rate", default=0.1, type=float,
-                           help="Dropout rate for transformer encoder positional encoding")
-        group.add_argument("--transformer-enc-attn-dropout-rate", default=0.1, type=float,
-                           help="Dropout rate for transformer encoder self-attention")
-        group.add_argument("--transformer-dec-dropout-rate", default=0.1, type=float,
-                           help="Dropout rate for transformer decoder except for attention and pos encoding")
-        group.add_argument("--transformer-dec-positional-dropout-rate", default=0.1, type=float,
-                           help="Dropout rate for transformer decoder positional encoding")
-        group.add_argument("--transformer-dec-attn-dropout-rate", default=0.1, type=float,
-                           help="Dropout rate for transformer decoder self-attention")
-        group.add_argument("--transformer-enc-dec-attn-dropout-rate", default=0.1, type=float,
-                           help="Dropout rate for transformer encoder-decoder attention")
-        group.add_argument("--eprenet-dropout-rate", default=0.5, type=float,
-                           help="Dropout rate in encoder prenet")
-        group.add_argument("--dprenet-dropout-rate", default=0.5, type=float,
-                           help="Dropout rate in decoder prenet")
-        group.add_argument("--postnet-dropout-rate", default=0.5, type=float,
-                           help="Dropout rate in postnet")
-        group.add_argument("--pretrained-model", default=None, type=str,
-                           help="Pretrained model path")
+        group.add_argument(
+            "--transformer-init",
+            type=str,
+            default="pytorch",
+            choices=["pytorch", "xavier_uniform", "xavier_normal", "kaiming_uniform", "kaiming_normal"],
+            help="How to initialize transformer parameters",
+        )
+        group.add_argument(
+            "--initial-encoder-alpha",
+            type=float,
+            default=1.0,
+            help="Initial alpha value in encoder's ScaledPositionalEncoding",
+        )
+        group.add_argument(
+            "--initial-decoder-alpha",
+            type=float,
+            default=1.0,
+            help="Initial alpha value in decoder's ScaledPositionalEncoding",
+        )
+        group.add_argument(
+            "--transformer-lr", default=1.0, type=float, help="Initial value of learning rate",
+        )
+        group.add_argument(
+            "--transformer-warmup-steps", default=4000, type=int, help="Optimizer warmup steps",
+        )
+        group.add_argument(
+            "--transformer-enc-dropout-rate",
+            default=0.1,
+            type=float,
+            help="Dropout rate for transformer encoder except for attention",
+        )
+        group.add_argument(
+            "--transformer-enc-positional-dropout-rate",
+            default=0.1,
+            type=float,
+            help="Dropout rate for transformer encoder positional encoding",
+        )
+        group.add_argument(
+            "--transformer-enc-attn-dropout-rate",
+            default=0.1,
+            type=float,
+            help="Dropout rate for transformer encoder self-attention",
+        )
+        group.add_argument(
+            "--transformer-dec-dropout-rate",
+            default=0.1,
+            type=float,
+            help="Dropout rate for transformer decoder except for attention and pos encoding",
+        )
+        group.add_argument(
+            "--transformer-dec-positional-dropout-rate",
+            default=0.1,
+            type=float,
+            help="Dropout rate for transformer decoder positional encoding",
+        )
+        group.add_argument(
+            "--transformer-dec-attn-dropout-rate",
+            default=0.1,
+            type=float,
+            help="Dropout rate for transformer decoder self-attention",
+        )
+        group.add_argument(
+            "--transformer-enc-dec-attn-dropout-rate",
+            default=0.1,
+            type=float,
+            help="Dropout rate for transformer encoder-decoder attention",
+        )
+        group.add_argument(
+            "--eprenet-dropout-rate", default=0.5, type=float, help="Dropout rate in encoder prenet",
+        )
+        group.add_argument(
+            "--dprenet-dropout-rate", default=0.5, type=float, help="Dropout rate in decoder prenet",
+        )
+        group.add_argument(
+            "--postnet-dropout-rate", default=0.5, type=float, help="Dropout rate in postnet",
+        )
+        group.add_argument("--pretrained-model", default=None, type=str, help="Pretrained model path")
         # loss related
-        group.add_argument("--use-masking", default=True, type=strtobool,
-                           help="Whether to use masking in calculation of loss")
-        group.add_argument("--use-weighted-masking", default=False, type=strtobool,
-                           help="Whether to use weighted masking in calculation of loss")
-        group.add_argument("--loss-type", default="L1", choices=["L1", "L2", "L1+L2"],
-                           help="How to calc loss")
-        group.add_argument("--bce-pos-weight", default=5.0, type=float,
-                           help="Positive sample weight in BCE calculation (only for use-masking=True)")
-        group.add_argument("--use-guided-attn-loss", default=False, type=strtobool,
-                           help="Whether to use guided attention loss")
-        group.add_argument("--guided-attn-loss-sigma", default=0.4, type=float,
-                           help="Sigma in guided attention loss")
-        group.add_argument("--guided-attn-loss-lambda", default=1.0, type=float,
-                           help="Lambda in guided attention loss")
-        group.add_argument("--num-heads-applied-guided-attn", default=2, type=int,
-                           help="Number of heads in each layer to be applied guided attention loss"
-                                "if set -1, all of the heads will be applied.")
-        group.add_argument("--num-layers-applied-guided-attn", default=2, type=int,
-                           help="Number of layers to be applied guided attention loss"
-                                "if set -1, all of the layers will be applied.")
-        group.add_argument("--modules-applied-guided-attn", type=str, nargs="+",
-                           default=["encoder-decoder"],
-                           help="Module name list to be applied guided attention loss")
+        group.add_argument(
+            "--use-masking", default=True, type=strtobool, help="Whether to use masking in calculation of loss",
+        )
+        group.add_argument(
+            "--use-weighted-masking",
+            default=False,
+            type=strtobool,
+            help="Whether to use weighted masking in calculation of loss",
+        )
+        group.add_argument(
+            "--loss-type", default="L1", choices=["L1", "L2", "L1+L2"], help="How to calc loss",
+        )
+        group.add_argument(
+            "--bce-pos-weight",
+            default=5.0,
+            type=float,
+            help="Positive sample weight in BCE calculation (only for use-masking=True)",
+        )
+        group.add_argument(
+            "--use-guided-attn-loss", default=False, type=strtobool, help="Whether to use guided attention loss",
+        )
+        group.add_argument(
+            "--guided-attn-loss-sigma", default=0.4, type=float, help="Sigma in guided attention loss",
+        )
+        group.add_argument(
+            "--guided-attn-loss-lambda", default=1.0, type=float, help="Lambda in guided attention loss",
+        )
+        group.add_argument(
+            "--num-heads-applied-guided-attn",
+            default=2,
+            type=int,
+            help="Number of heads in each layer to be applied guided attention loss"
+            "if set -1, all of the heads will be applied.",
+        )
+        group.add_argument(
+            "--num-layers-applied-guided-attn",
+            default=2,
+            type=int,
+            help="Number of layers to be applied guided attention loss" "if set -1, all of the layers will be applied.",
+        )
+        group.add_argument(
+            "--modules-applied-guided-attn",
+            type=str,
+            nargs="+",
+            default=["encoder-decoder"],
+            help="Module name list to be applied guided attention loss",
+        )
         return parser
 
     @property
@@ -336,15 +434,13 @@ class Transformer(TTSInterface, torch.nn.Module):
                     econv_filts=args.eprenet_conv_filts,
                     use_batch_norm=args.use_batch_norm,
                     dropout_rate=args.eprenet_dropout_rate,
-                    padding_idx=padding_idx
+                    padding_idx=padding_idx,
                 ),
-                torch.nn.Linear(args.eprenet_conv_chans, args.adim)
+                torch.nn.Linear(args.eprenet_conv_chans, args.adim),
             )
         else:
             encoder_input_layer = torch.nn.Embedding(
-                num_embeddings=idim,
-                embedding_dim=args.adim,
-                padding_idx=padding_idx
+                num_embeddings=idim, embedding_dim=args.adim, padding_idx=padding_idx
             )
         self.encoder = Encoder(
             idim=idim,
@@ -378,9 +474,9 @@ class Transformer(TTSInterface, torch.nn.Module):
                     idim=odim,
                     n_layers=args.dprenet_layers,
                     n_units=args.dprenet_units,
-                    dropout_rate=args.dprenet_dropout_rate
+                    dropout_rate=args.dprenet_dropout_rate,
                 ),
-                torch.nn.Linear(args.dprenet_units, args.adim)
+                torch.nn.Linear(args.dprenet_units, args.adim),
             )
         else:
             decoder_input_layer = "linear"
@@ -398,7 +494,7 @@ class Transformer(TTSInterface, torch.nn.Module):
             use_output_layer=False,
             pos_enc_class=pos_enc_class,
             normalize_before=args.decoder_normalize_before,
-            concat_after=args.decoder_concat_after
+            concat_after=args.decoder_concat_after,
         )
 
         # define final projection
@@ -406,30 +502,37 @@ class Transformer(TTSInterface, torch.nn.Module):
         self.prob_out = torch.nn.Linear(args.adim, args.reduction_factor)
 
         # define postnet
-        self.postnet = None if args.postnet_layers == 0 else Postnet(
-            idim=idim,
-            odim=odim,
-            n_layers=args.postnet_layers,
-            n_chans=args.postnet_chans,
-            n_filts=args.postnet_filts,
-            use_batch_norm=args.use_batch_norm,
-            dropout_rate=args.postnet_dropout_rate
+        self.postnet = (
+            None
+            if args.postnet_layers == 0
+            else Postnet(
+                idim=idim,
+                odim=odim,
+                n_layers=args.postnet_layers,
+                n_chans=args.postnet_chans,
+                n_filts=args.postnet_filts,
+                use_batch_norm=args.use_batch_norm,
+                dropout_rate=args.postnet_dropout_rate,
+            )
         )
 
         # define loss function
-        self.criterion = TransformerLoss(use_masking=args.use_masking,
-                                         use_weighted_masking=args.use_weighted_masking,
-                                         bce_pos_weight=args.bce_pos_weight)
+        self.criterion = TransformerLoss(
+            use_masking=args.use_masking,
+            use_weighted_masking=args.use_weighted_masking,
+            bce_pos_weight=args.bce_pos_weight,
+        )
         if self.use_guided_attn_loss:
             self.attn_criterion = GuidedMultiHeadAttentionLoss(
-                sigma=args.guided_attn_loss_sigma,
-                alpha=args.guided_attn_loss_lambda,
+                sigma=args.guided_attn_loss_sigma, alpha=args.guided_attn_loss_lambda,
             )
 
         # initialize parameters
-        self._reset_parameters(init_type=args.transformer_init,
-                               init_enc_alpha=args.initial_encoder_alpha,
-                               init_dec_alpha=args.initial_decoder_alpha)
+        self._reset_parameters(
+            init_type=args.transformer_init,
+            init_enc_alpha=args.initial_encoder_alpha,
+            init_dec_alpha=args.initial_decoder_alpha,
+        )
 
         # load pretrained model
         if args.pretrained_model is not None:
@@ -481,7 +584,7 @@ class Transformer(TTSInterface, torch.nn.Module):
 
         # thin out frames for reduction factor (B, Lmax, odim) ->  (B, Lmax//r, odim)
         if self.reduction_factor > 1:
-            ys_in = ys[:, self.reduction_factor - 1::self.reduction_factor]
+            ys_in = ys[:, self.reduction_factor - 1 :: self.reduction_factor]
             olens_in = olens.new([olen // self.reduction_factor for olen in olens])
         else:
             ys_in, olens_in = ys, olens
@@ -513,8 +616,7 @@ class Transformer(TTSInterface, torch.nn.Module):
             labels[:, -1] = 1.0  # make sure at least one frame has 1
 
         # caluculate loss values
-        l1_loss, l2_loss, bce_loss = self.criterion(
-            after_outs, before_outs, logits, ys, labels, olens)
+        l1_loss, l2_loss, bce_loss = self.criterion(after_outs, before_outs, logits, ys, labels, olens)
         if self.loss_type == "L1":
             loss = l1_loss + bce_loss
         elif self.loss_type == "L2":
@@ -536,7 +638,7 @@ class Transformer(TTSInterface, torch.nn.Module):
             if "encoder" in self.modules_applied_guided_attn:
                 att_ws = []
                 for idx, layer_idx in enumerate(reversed(range(len(self.encoder.encoders)))):
-                    att_ws += [self.encoder.encoders[layer_idx].self_attn.attn[:, :self.num_heads_applied_guided_attn]]
+                    att_ws += [self.encoder.encoders[layer_idx].self_attn.attn[:, : self.num_heads_applied_guided_attn]]
                     if idx + 1 == self.num_layers_applied_guided_attn:
                         break
                 att_ws = torch.cat(att_ws, dim=1)  # (B, H*L, T_in, T_in)
@@ -547,7 +649,7 @@ class Transformer(TTSInterface, torch.nn.Module):
             if "decoder" in self.modules_applied_guided_attn:
                 att_ws = []
                 for idx, layer_idx in enumerate(reversed(range(len(self.decoder.decoders)))):
-                    att_ws += [self.decoder.decoders[layer_idx].self_attn.attn[:, :self.num_heads_applied_guided_attn]]
+                    att_ws += [self.decoder.decoders[layer_idx].self_attn.attn[:, : self.num_heads_applied_guided_attn]]
                     if idx + 1 == self.num_layers_applied_guided_attn:
                         break
                 att_ws = torch.cat(att_ws, dim=1)  # (B, H*L, T_out, T_out)
@@ -558,7 +660,7 @@ class Transformer(TTSInterface, torch.nn.Module):
             if "encoder-decoder" in self.modules_applied_guided_attn:
                 att_ws = []
                 for idx, layer_idx in enumerate(reversed(range(len(self.decoder.decoders)))):
-                    att_ws += [self.decoder.decoders[layer_idx].src_attn.attn[:, :self.num_heads_applied_guided_attn]]
+                    att_ws += [self.decoder.decoders[layer_idx].src_attn.attn[:, : self.num_heads_applied_guided_attn]]
                     if idx + 1 == self.num_layers_applied_guided_attn:
                         break
                 att_ws = torch.cat(att_ws, dim=1)  # (B, H*L, T_out, T_in)
@@ -659,8 +761,9 @@ class Transformer(TTSInterface, torch.nn.Module):
 
         return outs, probs, att_ws
 
-    def calculate_all_attentions(self, xs, ilens, ys, olens,
-                                 spembs=None, skip_output=False, keep_tensor=False, *args, **kwargs):
+    def calculate_all_attentions(
+        self, xs, ilens, ys, olens, spembs=None, skip_output=False, keep_tensor=False, *args, **kwargs
+    ):
         """Calculate all of the attention weights.
 
         Args:
@@ -687,7 +790,7 @@ class Transformer(TTSInterface, torch.nn.Module):
 
             # thin out frames for reduction factor (B, Lmax, odim) ->  (B, Lmax//r, odim)
             if self.reduction_factor > 1:
-                ys_in = ys[:, self.reduction_factor - 1::self.reduction_factor]
+                ys_in = ys[:, self.reduction_factor - 1 :: self.reduction_factor]
                 olens_in = olens.new([olen // self.reduction_factor for olen in olens])
             else:
                 ys_in, olens_in = ys, olens

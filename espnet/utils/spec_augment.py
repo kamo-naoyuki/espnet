@@ -48,9 +48,11 @@ def specaug(spec, W=5, F=30, T=40, num_freq_masks=2, num_time_masks=2, replace_w
     :param bool replace_with_zero: if True, masked parts will be filled with 0, if False, filled with mean
     """
     return time_mask(
-        freq_mask(time_warp(spec, W=W),
-                  F=F, num_masks=num_freq_masks, replace_with_zero=replace_with_zero),
-        T=T, num_masks=num_time_masks, replace_with_zero=replace_with_zero)
+        freq_mask(time_warp(spec, W=W), F=F, num_masks=num_freq_masks, replace_with_zero=replace_with_zero,),
+        T=T,
+        num_masks=num_time_masks,
+        replace_with_zero=replace_with_zero,
+    )
 
 
 def time_warp(spec, W=5):
@@ -73,8 +75,10 @@ def time_warp(spec, W=5):
 
     # Uniform distribution from (0,W) with chance to be up to W negative
     dist_to_warp = random.randrange(-W, W)
-    src_pts, dest_pts = (torch.tensor([[[point_to_warp, y]]], device=device),
-                         torch.tensor([[[point_to_warp + dist_to_warp, y]]], device=device))
+    src_pts, dest_pts = (
+        torch.tensor([[[point_to_warp, y]]], device=device),
+        torch.tensor([[[point_to_warp + dist_to_warp, y]]], device=device),
+    )
     warped_spectro, dense_flows = sparse_image_warp(spec, src_pts, dest_pts)
     return warped_spectro.squeeze(3).squeeze(0)
 
@@ -95,11 +99,11 @@ def freq_mask(spec, F=30, num_masks=1, replace_with_zero=False):
         f_zero = random.randrange(0, num_mel_channels - f)
 
         # avoids randrange error if values are equal and range is empty
-        if (f_zero == f_zero + f):
+        if f_zero == f_zero + f:
             return cloned.squeeze(0)
 
         mask_end = random.randrange(f_zero, f_zero + f)
-        if (replace_with_zero):
+        if replace_with_zero:
             cloned[0][:, f_zero:mask_end] = 0
         else:
             cloned[0][:, f_zero:mask_end] = cloned.mean()
@@ -122,23 +126,25 @@ def time_mask(spec, T=40, num_masks=1, replace_with_zero=False):
         t_zero = random.randrange(0, len_spectro - t)
 
         # avoids randrange error if values are equal and range is empty
-        if (t_zero == t_zero + t):
+        if t_zero == t_zero + t:
             return cloned.squeeze(0)
 
         mask_end = random.randrange(t_zero, t_zero + t)
-        if (replace_with_zero):
+        if replace_with_zero:
             cloned[0][t_zero:mask_end, :] = 0
         else:
             cloned[0][t_zero:mask_end, :] = cloned.mean()
     return cloned.squeeze(0)
 
 
-def sparse_image_warp(img_tensor,
-                      source_control_point_locations,
-                      dest_control_point_locations,
-                      interpolation_order=2,
-                      regularization_weight=0.0,
-                      num_boundaries_points=0):
+def sparse_image_warp(
+    img_tensor,
+    source_control_point_locations,
+    dest_control_point_locations,
+    interpolation_order=2,
+    regularization_weight=0.0,
+    num_boundaries_points=0,
+):
     device = img_tensor.device
     control_point_flows = dest_control_point_locations - source_control_point_locations
 
@@ -150,7 +156,8 @@ def sparse_image_warp(img_tensor,
         control_point_flows,
         flattened_grid_locations,
         interpolation_order,
-        regularization_weight)
+        regularization_weight,
+    )
 
     dense_flows = create_dense_flows(flattened_flows, batch_size, image_height, image_width)
 
@@ -182,7 +189,9 @@ def create_dense_flows(flattened_flows, batch_size, image_height, image_width):
     return torch.reshape(flattened_flows, [batch_size, image_height, image_width, 2])
 
 
-def interpolate_spline(train_points, train_values, query_points, order, regularization_weight=0.0,):
+def interpolate_spline(
+    train_points, train_values, query_points, order, regularization_weight=0.0,
+):
     # First, fit the spline to the observed data.
     w, v = solve_interpolation(train_points, train_values, order, regularization_weight)
     # Then, evaluate the spline at the query locations.
@@ -306,10 +315,7 @@ def apply_interpolation(query_points, train_points, w, v, order):
     # Then, compute the contribution from the linear term.
     # Pad query_points with ones, for the bias term in the linear model.
     ones = torch.ones_like(query_points[..., :1])
-    query_points_pad = torch.cat((
-        query_points,
-        ones
-    ), 2).float()
+    query_points_pad = torch.cat((query_points, ones), 2).float()
     linear_term = torch.matmul(query_points_pad, v)
 
     return rbf_term + linear_term
@@ -347,8 +353,7 @@ def dense_image_warp(image, flow):
 
     # The flow is defined on the image grid. Turn the flow into a list of query
     # points in the grid space.
-    grid_x, grid_y = torch.meshgrid(
-        torch.arange(width, device=device), torch.arange(height, device=device))
+    grid_x, grid_y = torch.meshgrid(torch.arange(width, device=device), torch.arange(height, device=device))
 
     stacked_grid = torch.stack((grid_y, grid_x), dim=2).float()
 
@@ -363,10 +368,7 @@ def dense_image_warp(image, flow):
     return interpolated
 
 
-def interpolate_bilinear(grid,
-                         query_points,
-                         name='interpolate_bilinear',
-                         indexing='ij'):
+def interpolate_bilinear(grid, query_points, name="interpolate_bilinear", indexing="ij"):
     """Similar to Matlab's interp2 function.
 
     Notes:
@@ -386,12 +388,12 @@ def interpolate_bilinear(grid,
         ValueError: if the indexing mode is invalid, or if the shape of the inputs
         invalid.
     """
-    if indexing != 'ij' and indexing != 'xy':
-        raise ValueError('Indexing mode must be \'ij\' or \'xy\'')
+    if indexing != "ij" and indexing != "xy":
+        raise ValueError("Indexing mode must be 'ij' or 'xy'")
 
     shape = grid.shape
     if len(shape) != 4:
-        msg = 'Grid must be 4 dimensional. Received size: '
+        msg = "Grid must be 4 dimensional. Received size: "
         raise ValueError(msg + str(grid.shape))
 
     batch_size, height, width, channels = grid.shape
@@ -406,7 +408,7 @@ def interpolate_bilinear(grid,
     alphas = []
     floors = []
     ceils = []
-    index_order = [0, 1] if indexing == 'ij' else [1, 0]
+    index_order = [0, 1] if indexing == "ij" else [1, 0]
     unstacked_query_points = query_points.unbind(2)
 
     for dim in index_order:
@@ -451,10 +453,10 @@ def interpolate_bilinear(grid,
         return torch.reshape(gathered_values, [batch_size, num_queries, channels])
 
     # grab the pixel values in the 4 corners around each query point
-    top_left = gather(floors[0], floors[1], 'top_left')
-    top_right = gather(floors[0], ceils[1], 'top_right')
-    bottom_left = gather(ceils[0], floors[1], 'bottom_left')
-    bottom_right = gather(ceils[0], ceils[1], 'bottom_right')
+    top_left = gather(floors[0], floors[1], "top_left")
+    top_right = gather(floors[0], ceils[1], "top_right")
+    bottom_left = gather(ceils[0], floors[1], "bottom_left")
+    bottom_right = gather(ceils[0], ceils[1], "bottom_right")
 
     interp_top = alphas[1] * (top_right - top_left) + top_left
     interp_bottom = alphas[1] * (bottom_right - bottom_left) + bottom_left

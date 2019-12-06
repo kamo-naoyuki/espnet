@@ -66,8 +66,7 @@ class CustomUpdater(training.StandardUpdater):
     """
 
     def __init__(self, train_iter, optimizer, converter, device, accum_grad=1):
-        super(CustomUpdater, self).__init__(
-            train_iter, optimizer, converter=converter, device=device)
+        super(CustomUpdater, self).__init__(train_iter, optimizer, converter=converter, device=device)
         self.forward_count = 0
         self.accum_grad = accum_grad
         self.start = True
@@ -77,8 +76,8 @@ class CustomUpdater(training.StandardUpdater):
     # The core part of the update routine can be customized by overriding.
     def update_core(self):
         """Main update routine for Custom Updater."""
-        train_iter = self.get_iterator('main')
-        optimizer = self.get_optimizer('main')
+        train_iter = self.get_iterator("main")
+        optimizer = self.get_optimizer("main")
 
         # Get batch and convert into variables
         batch = train_iter.next()
@@ -98,11 +97,10 @@ class CustomUpdater(training.StandardUpdater):
             return
         self.forward_count = 0
         # compute the gradient norm to check if it is normal or not
-        grad_norm = np.sqrt(sum_sqnorm(
-            [p.grad for p in optimizer.target.params(False)]))
-        logging.info('grad norm={}'.format(grad_norm))
+        grad_norm = np.sqrt(sum_sqnorm([p.grad for p in optimizer.target.params(False)]))
+        logging.info("grad norm={}".format(grad_norm))
         if math.isnan(grad_norm):
-            logging.warning('grad norm is nan. Do not update model.')
+            logging.warning("grad norm is nan. Do not update model.")
         else:
             optimizer.update()
         optimizer.target.cleargrads()  # Clear the parameter gradients
@@ -139,9 +137,9 @@ class CustomParallelUpdater(training.updaters.MultiprocessParallelUpdater):
     """
 
     def __init__(self, train_iters, optimizer, converter, devices, accum_grad=1):
-        super(CustomParallelUpdater, self).__init__(
-            train_iters, optimizer, converter=converter, devices=devices)
+        super(CustomParallelUpdater, self).__init__(train_iters, optimizer, converter=converter, devices=devices)
         from cupy.cuda import nccl
+
         self.accum_grad = accum_grad
         self.forward_count = 0
         self.nccl = nccl
@@ -151,12 +149,12 @@ class CustomParallelUpdater(training.updaters.MultiprocessParallelUpdater):
         """Main Update routine of the custom parallel updater."""
         self.setup_workers()
 
-        self._send_message(('update', None))
+        self._send_message(("update", None))
         with cuda.Device(self._devices[0]):
             # For reducing memory
 
-            optimizer = self.get_optimizer('main')
-            batch = self.get_iterator('main').next()
+            optimizer = self.get_optimizer("main")
+            batch = self.get_iterator("main").next()
             x = self.converter(batch, self._devices[0])
 
             loss = self._master(*x) / self.accum_grad
@@ -167,10 +165,9 @@ class CustomParallelUpdater(training.updaters.MultiprocessParallelUpdater):
             null_stream = cuda.Stream.null
             if self.comm is not None:
                 gg = gather_grads(self._master)
-                self.comm.reduce(gg.data.ptr, gg.data.ptr, gg.size,
-                                 self.nccl.NCCL_FLOAT,
-                                 self.nccl.NCCL_SUM,
-                                 0, null_stream.ptr)
+                self.comm.reduce(
+                    gg.data.ptr, gg.data.ptr, gg.size, self.nccl.NCCL_FLOAT, self.nccl.NCCL_SUM, 0, null_stream.ptr,
+                )
                 scatter_grads(self._master, gg)
                 del gg
 
@@ -180,21 +177,19 @@ class CustomParallelUpdater(training.updaters.MultiprocessParallelUpdater):
                 return
             self.forward_count = 0
             # check gradient value
-            grad_norm = np.sqrt(sum_sqnorm(
-                [p.grad for p in optimizer.target.params(False)]))
-            logging.info('grad norm={}'.format(grad_norm))
+            grad_norm = np.sqrt(sum_sqnorm([p.grad for p in optimizer.target.params(False)]))
+            logging.info("grad norm={}".format(grad_norm))
 
             # update
             if math.isnan(grad_norm):
-                logging.warning('grad norm is nan. Do not update model.')
+                logging.warning("grad norm is nan. Do not update model.")
             else:
                 optimizer.update()
             self._master.cleargrads()
 
             if self.comm is not None:
                 gp = gather_params(self._master)
-                self.comm.bcast(gp.data.ptr, gp.size, self.nccl.NCCL_FLOAT,
-                                0, null_stream.ptr)
+                self.comm.bcast(gp.data.ptr, gp.size, self.nccl.NCCL_FLOAT, 0, null_stream.ptr)
 
     def update(self):
         self.update_core()
@@ -235,7 +230,7 @@ class CustomConverter(object):
 
         # perform subsampling
         if self.subsampling_factor > 1:
-            xs = [x[::self.subsampling_factor, :] for x in xs]
+            xs = [x[:: self.subsampling_factor, :] for x in xs]
 
         # get batch made of lengths of input sequences
         ilens = [x.shape[0] for x in xs]

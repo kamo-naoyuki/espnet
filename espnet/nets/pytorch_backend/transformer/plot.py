@@ -10,6 +10,7 @@ def _plot_and_save_attention(att_w, filename):
     # dynamically import matplotlib due to not found error
     from matplotlib.ticker import MaxNLocator
     import os
+
     d = os.path.dirname(filename)
     if not os.path.exists(d):
         os.makedirs(d)
@@ -46,10 +47,9 @@ def plot_multi_head_attention(data, attn_dict, outdir, suffix="png", savefn=save
     """
     for name, att_ws in attn_dict.items():
         for idx, att_w in enumerate(att_ws):
-            filename = "%s/%s.%s.%s" % (
-                outdir, data[idx][0], name, suffix)
-            dec_len = int(data[idx][1]['output'][0]['shape'][0])
-            enc_len = int(data[idx][1]['input'][0]['shape'][0])
+            filename = "%s/%s.%s.%s" % (outdir, data[idx][0], name, suffix)
+            dec_len = int(data[idx][1]["output"][0]["shape"][0])
+            enc_len = int(data[idx][1]["input"][0]["shape"][0])
             if "encoder" in name:
                 att_w = att_w[:, :enc_len, :enc_len]
             elif "decoder" in name:
@@ -83,6 +83,7 @@ class PlotAttentionReport(asr_utils.PlotAttentionReport):
     def log_attentions(self, logger, step):
         def log_fig(plot, filename):
             from os.path import basename
+
             logger.add_figure(basename(filename), plot, step)
             plt.clf()
 

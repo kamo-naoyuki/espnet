@@ -35,10 +35,10 @@ class Reporter(chainer.Chain):
 
     def report(self, loss, acc, ppl, bleu):
         """Report at every step."""
-        reporter.report({'loss': loss}, self)
-        reporter.report({'acc': acc}, self)
-        reporter.report({'ppl': ppl}, self)
-        reporter.report({'bleu': bleu}, self)
+        reporter.report({"loss": loss}, self)
+        reporter.report({"acc": acc}, self)
+        reporter.report({"ppl": ppl}, self)
+        reporter.report({"bleu": bleu}, self)
 
 
 class E2E(MTInterface, torch.nn.Module):
@@ -63,19 +63,47 @@ class E2E(MTInterface, torch.nn.Module):
         """Add arguments for the encoder."""
         group = parser.add_argument_group("E2E encoder setting")
         # encoder
-        group.add_argument('--etype', default='blstmp', type=str,
-                           choices=['lstm', 'blstm', 'lstmp', 'blstmp', 'vgglstmp', 'vggblstmp', 'vgglstm', 'vggblstm',
-                                    'gru', 'bgru', 'grup', 'bgrup', 'vgggrup', 'vggbgrup', 'vgggru', 'vggbgru'],
-                           help='Type of encoder network architecture')
-        group.add_argument('--elayers', default=4, type=int,
-                           help='Number of encoder layers (for shared recognition part in multi-speaker asr mode)')
-        group.add_argument('--eunits', '-u', default=300, type=int,
-                           help='Number of encoder hidden units')
-        group.add_argument('--eprojs', default=320, type=int,
-                           help='Number of encoder projection units')
-        group.add_argument('--subsample', default="1", type=str,
-                           help='Subsample input frames x_y_z means subsample every x frame at 1st layer, '
-                                'every y frame at 2nd layer etc.')
+        group.add_argument(
+            "--etype",
+            default="blstmp",
+            type=str,
+            choices=[
+                "lstm",
+                "blstm",
+                "lstmp",
+                "blstmp",
+                "vgglstmp",
+                "vggblstmp",
+                "vgglstm",
+                "vggblstm",
+                "gru",
+                "bgru",
+                "grup",
+                "bgrup",
+                "vgggrup",
+                "vggbgrup",
+                "vgggru",
+                "vggbgru",
+            ],
+            help="Type of encoder network architecture",
+        )
+        group.add_argument(
+            "--elayers",
+            default=4,
+            type=int,
+            help="Number of encoder layers (for shared recognition part in multi-speaker asr mode)",
+        )
+        group.add_argument(
+            "--eunits", "-u", default=300, type=int, help="Number of encoder hidden units",
+        )
+        group.add_argument("--eprojs", default=320, type=int, help="Number of encoder projection units")
+        group.add_argument(
+            "--subsample",
+            default="1",
+            type=str,
+            help="Subsample input frames x_y_z means subsample every x frame at 1st layer, "
+            "every y frame at 2nd layer etc.",
+        )
         return parser
 
     @staticmethod
@@ -83,43 +111,67 @@ class E2E(MTInterface, torch.nn.Module):
         """Add arguments for the attention."""
         group = parser.add_argument_group("E2E attention setting")
         # attention
-        group.add_argument('--atype', default='dot', type=str,
-                           choices=['noatt', 'dot', 'add', 'location', 'coverage',
-                                    'coverage_location', 'location2d', 'location_recurrent',
-                                    'multi_head_dot', 'multi_head_add', 'multi_head_loc',
-                                    'multi_head_multi_res_loc'],
-                           help='Type of attention architecture')
-        group.add_argument('--adim', default=320, type=int,
-                           help='Number of attention transformation dimensions')
-        group.add_argument('--awin', default=5, type=int,
-                           help='Window size for location2d attention')
-        group.add_argument('--aheads', default=4, type=int,
-                           help='Number of heads for multi head attention')
-        group.add_argument('--aconv-chans', default=-1, type=int,
-                           help='Number of attention convolution channels \
-                           (negative value indicates no location-aware attention)')
-        group.add_argument('--aconv-filts', default=100, type=int,
-                           help='Number of attention convolution filters \
-                           (negative value indicates no location-aware attention)')
-        group.add_argument('--dropout-rate', default=0.0, type=float,
-                           help='Dropout rate for the encoder')
+        group.add_argument(
+            "--atype",
+            default="dot",
+            type=str,
+            choices=[
+                "noatt",
+                "dot",
+                "add",
+                "location",
+                "coverage",
+                "coverage_location",
+                "location2d",
+                "location_recurrent",
+                "multi_head_dot",
+                "multi_head_add",
+                "multi_head_loc",
+                "multi_head_multi_res_loc",
+            ],
+            help="Type of attention architecture",
+        )
+        group.add_argument(
+            "--adim", default=320, type=int, help="Number of attention transformation dimensions",
+        )
+        group.add_argument("--awin", default=5, type=int, help="Window size for location2d attention")
+        group.add_argument(
+            "--aheads", default=4, type=int, help="Number of heads for multi head attention",
+        )
+        group.add_argument(
+            "--aconv-chans",
+            default=-1,
+            type=int,
+            help="Number of attention convolution channels \
+                           (negative value indicates no location-aware attention)",
+        )
+        group.add_argument(
+            "--aconv-filts",
+            default=100,
+            type=int,
+            help="Number of attention convolution filters \
+                           (negative value indicates no location-aware attention)",
+        )
+        group.add_argument(
+            "--dropout-rate", default=0.0, type=float, help="Dropout rate for the encoder",
+        )
         return parser
 
     @staticmethod
     def decoder_add_arguments(parser):
         """Add arguments for the decoder."""
         group = parser.add_argument_group("E2E encoder setting")
-        group.add_argument('--dtype', default='lstm', type=str,
-                           choices=['lstm', 'gru'],
-                           help='Type of decoder network architecture')
-        group.add_argument('--dlayers', default=1, type=int,
-                           help='Number of decoder layers')
-        group.add_argument('--dunits', default=320, type=int,
-                           help='Number of decoder hidden units')
-        group.add_argument('--dropout-rate-decoder', default=0.0, type=float,
-                           help='Dropout rate for the decoder')
-        group.add_argument('--sampling-probability', default=0.0, type=float,
-                           help='Ratio of predicted labels fed back to decoder')
+        group.add_argument(
+            "--dtype", default="lstm", type=str, choices=["lstm", "gru"], help="Type of decoder network architecture",
+        )
+        group.add_argument("--dlayers", default=1, type=int, help="Number of decoder layers")
+        group.add_argument("--dunits", default=320, type=int, help="Number of decoder hidden units")
+        group.add_argument(
+            "--dropout-rate-decoder", default=0.0, type=float, help="Dropout rate for the decoder",
+        )
+        group.add_argument(
+            "--sampling-probability", default=0.0, type=float, help="Ratio of predicted labels fed back to decoder",
+        )
         return parser
 
     def __init__(self, idim, odim, args):
@@ -154,8 +206,8 @@ class E2E(MTInterface, torch.nn.Module):
         # subsample info
         # +1 means input (+1) and layers outputs (args.elayer)
         subsample = np.ones(args.elayers + 1, dtype=np.int)
-        logging.warning('Subsampling is not performed for machine translation.')
-        logging.info('subsample: ' + ' '.join([str(x) for x in subsample]))
+        logging.warning("Subsampling is not performed for machine translation.")
+        logging.info("subsample: " + " ".join([str(x) for x in subsample]))
         self.subsample = subsample
 
         # label smoothing info
@@ -181,15 +233,15 @@ class E2E(MTInterface, torch.nn.Module):
         # tie source and target emeddings
         if args.tie_src_tgt_embedding:
             if idim != odim:
-                raise ValueError('When using tie_src_tgt_embedding, idim and odim must be equal.')
+                raise ValueError("When using tie_src_tgt_embedding, idim and odim must be equal.")
             if args.eunits != args.dunits:
-                raise ValueError('When using tie_src_tgt_embedding, eunits and dunits must be equal.')
+                raise ValueError("When using tie_src_tgt_embedding, eunits and dunits must be equal.")
             self.embed.weight = self.dec.embed.weight
 
         # tie emeddings and the classfier
         if args.tie_classifier:
             if args.context_residual:
-                raise ValueError('When using tie_classifier, context_residual must be turned off.')
+                raise ValueError("When using tie_classifier, context_residual must be turned off.")
             self.dec.output.weight = self.dec.embed.weight
 
         # weight initialization
@@ -197,12 +249,19 @@ class E2E(MTInterface, torch.nn.Module):
 
         # options for beam search
         if args.report_bleu:
-            trans_args = {'beam_size': args.beam_size, 'penalty': args.penalty,
-                          'ctc_weight': 0, 'maxlenratio': args.maxlenratio,
-                          'minlenratio': args.minlenratio, 'lm_weight': args.lm_weight,
-                          'rnnlm': args.rnnlm, 'nbest': args.nbest,
-                          'space': args.sym_space, 'blank': args.sym_blank,
-                          'tgt_lang': False}
+            trans_args = {
+                "beam_size": args.beam_size,
+                "penalty": args.penalty,
+                "ctc_weight": 0,
+                "maxlenratio": args.maxlenratio,
+                "minlenratio": args.minlenratio,
+                "lm_weight": args.lm_weight,
+                "rnnlm": args.rnnlm,
+                "nbest": args.nbest,
+                "space": args.sym_space,
+                "blank": args.sym_blank,
+                "tgt_lang": False,
+            }
 
             self.trans_args = argparse.Namespace(**trans_args)
             self.report_bleu = args.report_bleu
@@ -253,19 +312,18 @@ class E2E(MTInterface, torch.nn.Module):
 
             bleus = []
             nbest_hyps = self.dec.recognize_beam_batch(
-                hs_pad, torch.tensor(hlens), lpz,
-                self.trans_args, self.char_list,
-                self.rnnlm)
+                hs_pad, torch.tensor(hlens), lpz, self.trans_args, self.char_list, self.rnnlm,
+            )
             # remove <sos> and <eos>
-            y_hats = [nbest_hyp[0]['yseq'][1:-1] for nbest_hyp in nbest_hyps]
+            y_hats = [nbest_hyp[0]["yseq"][1:-1] for nbest_hyp in nbest_hyps]
             for i, y_hat in enumerate(y_hats):
                 y_true = ys_pad[i]
 
                 seq_hat = [self.char_list[int(idx)] for idx in y_hat if int(idx) != -1]
                 seq_true = [self.char_list[int(idx)] for idx in y_true if int(idx) != -1]
-                seq_hat_text = "".join(seq_hat).replace(self.trans_args.space, ' ')
-                seq_hat_text = seq_hat_text.replace(self.trans_args.blank, '')
-                seq_true_text = "".join(seq_true).replace(self.trans_args.space, ' ')
+                seq_hat_text = "".join(seq_hat).replace(self.trans_args.space, " ")
+                seq_hat_text = seq_hat_text.replace(self.trans_args.blank, "")
+                seq_true_text = "".join(seq_true).replace(self.trans_args.space, " ")
 
                 bleu = nltk.bleu_score.sentence_bleu([seq_true_text], seq_hat_text) * 100
                 bleus.append(bleu)
@@ -278,7 +336,7 @@ class E2E(MTInterface, torch.nn.Module):
         if not math.isnan(loss_data):
             self.reporter.report(loss_data, acc, ppl, bleu)
         else:
-            logging.warning('loss (=%f) is not correct', loss_data)
+            logging.warning("loss (=%f) is not correct", loss_data)
         return self.loss
 
     def target_language_biasing(self, xs_pad, ilens, ys_pad):

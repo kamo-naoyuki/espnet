@@ -56,7 +56,7 @@ def make_arg(**kwargs):
         context_residual=False,
         use_frontend=False,
         replace_sos=False,
-        tgt_lang=False
+        tgt_lang=False,
     )
     defaults.update(kwargs)
     return argparse.Namespace(**defaults)
@@ -71,7 +71,7 @@ def init_torch_weight_random(m, rand_range):
     for name, p in m.named_parameters():
         p.data.uniform_(rand_range[0], rand_range[1])
         # set small bias for <blank> output
-        if 'wordlm.lo.bias' in name or 'dec.output.bias' in name:
+        if "wordlm.lo.bias" in name or "dec.output.bias" in name:
             p.data[0] = -10.0
 
 
@@ -80,27 +80,32 @@ def init_chainer_weight_const(m, val):
         p.data[:] = val
 
 
-@pytest.mark.parametrize(("etype", "dtype", "m_str", "text_idx1"), [
-    ("blstmp", "lstm", "espnet.nets.chainer_backend.e2e_asr", 0),
-    ("blstmp", "lstm", "espnet.nets.pytorch_backend.e2e_asr", 1),
-    ("vggblstmp", "lstm", "espnet.nets.chainer_backend.e2e_asr", 2),
-    ("vggblstmp", "lstm", "espnet.nets.pytorch_backend.e2e_asr", 3),
-    ("bgrup", "gru", "espnet.nets.chainer_backend.e2e_asr", 4),
-    ("bgrup", "gru", "espnet.nets.pytorch_backend.e2e_asr", 5),
-    ("vggbgrup", "gru", "espnet.nets.chainer_backend.e2e_asr", 6),
-    ("vggbgrup", "gru", "espnet.nets.pytorch_backend.e2e_asr", 7),
-])
+@pytest.mark.parametrize(
+    ("etype", "dtype", "m_str", "text_idx1"),
+    [
+        ("blstmp", "lstm", "espnet.nets.chainer_backend.e2e_asr", 0),
+        ("blstmp", "lstm", "espnet.nets.pytorch_backend.e2e_asr", 1),
+        ("vggblstmp", "lstm", "espnet.nets.chainer_backend.e2e_asr", 2),
+        ("vggblstmp", "lstm", "espnet.nets.pytorch_backend.e2e_asr", 3),
+        ("bgrup", "gru", "espnet.nets.chainer_backend.e2e_asr", 4),
+        ("bgrup", "gru", "espnet.nets.pytorch_backend.e2e_asr", 5),
+        ("vggbgrup", "gru", "espnet.nets.chainer_backend.e2e_asr", 6),
+        ("vggbgrup", "gru", "espnet.nets.pytorch_backend.e2e_asr", 7),
+    ],
+)
 def test_recognition_results(etype, dtype, m_str, text_idx1):
     const = 1e-4
     numpy.random.seed(1)
-    seq_true_texts = ([["o", "iuiuiuiuiuiuiuiuo", "aiaiaiaiaiaiaiaio"],
-                       ["o", "uiuiuiuiuiuiuiuio", "aiaiaiaiaiaiaiaio"],
-                       ["o", "iuiuiuiuiuiuiuiuo", "aiaiaiaiaiaiaiaio"],
-                       ["o", "uiuiuiuiuiuiuiuio", "aiaiaiaiaiaiaiaio"],
-                       ["o", "iuiuiuiuiuiuiuiuo", "aiaiaiaiaiaiaiaio"],
-                       ["o", "uiuiuiuiuiuiuiuio", "aiaiaiaiaiaiaiaio"],
-                       ["o", "iuiuiuiuiuiuiuiuo", "aiaiaiaiaiaiaiaio"],
-                       ["o", "uiuiuiuiuiuiuiuio", "aiaiaiaiaiaiaiaio"]])
+    seq_true_texts = [
+        ["o", "iuiuiuiuiuiuiuiuo", "aiaiaiaiaiaiaiaio"],
+        ["o", "uiuiuiuiuiuiuiuio", "aiaiaiaiaiaiaiaio"],
+        ["o", "iuiuiuiuiuiuiuiuo", "aiaiaiaiaiaiaiaio"],
+        ["o", "uiuiuiuiuiuiuiuio", "aiaiaiaiaiaiaiaio"],
+        ["o", "iuiuiuiuiuiuiuiuo", "aiaiaiaiaiaiaiaio"],
+        ["o", "uiuiuiuiuiuiuiuio", "aiaiaiaiaiaiaiaio"],
+        ["o", "iuiuiuiuiuiuiuiuo", "aiaiaiaiaiaiaiaio"],
+        ["o", "uiuiuiuiuiuiuiuio", "aiaiaiaiaiaiaiaio"],
+    ]
 
     # ctc_weight: 0.0 (attention), 0.5 (hybrid CTC/attention), 1.0 (CTC)
     for text_idx2, ctc_weight in enumerate([0.0, 0.5, 1.0]):
@@ -115,102 +120,99 @@ def test_recognition_results(etype, dtype, m_str, text_idx1):
         else:
             init_chainer_weight_const(model, const)
 
-        data = [
-            ("aaa", dict(feat=numpy.random.randn(100, 40).astype(
-                numpy.float32), token=seq_true_text))
-        ]
+        data = [("aaa", dict(feat=numpy.random.randn(100, 40).astype(numpy.float32), token=seq_true_text,),)]
 
         in_data = data[0][1]["feat"]
         nbest_hyps = model.recognize(in_data, args, args.char_list)
-        y_hat = nbest_hyps[0]['yseq'][1:]
+        y_hat = nbest_hyps[0]["yseq"][1:]
         seq_hat = [args.char_list[int(idx)] for idx in y_hat]
-        seq_hat_text = "".join(seq_hat).replace('<space>', ' ')
+        seq_hat_text = "".join(seq_hat).replace("<space>", " ")
         seq_true_text = data[0][1]["token"]
 
         assert seq_hat_text == seq_true_text
 
 
-@pytest.mark.parametrize(("etype", "dtype", "m_str", "text_idx1"), [
-    ("blstmp", "lstm", "espnet.nets.chainer_backend.e2e_asr", 0),
-    ("blstmp", "lstm", "espnet.nets.pytorch_backend.e2e_asr", 1),
-    ("vggblstmp", "lstm", "espnet.nets.chainer_backend.e2e_asr", 2),
-    ("vggblstmp", "lstm", "espnet.nets.pytorch_backend.e2e_asr", 3),
-    ("bgrup", "gru", "espnet.nets.chainer_backend.e2e_asr", 4),
-    ("bgrup", "gru", "espnet.nets.pytorch_backend.e2e_asr", 5),
-    ("vggbgrup", "gru", "espnet.nets.chainer_backend.e2e_asr", 6),
-    ("vggbgrup", "gru", "espnet.nets.pytorch_backend.e2e_asr", 7),
-])
+@pytest.mark.parametrize(
+    ("etype", "dtype", "m_str", "text_idx1"),
+    [
+        ("blstmp", "lstm", "espnet.nets.chainer_backend.e2e_asr", 0),
+        ("blstmp", "lstm", "espnet.nets.pytorch_backend.e2e_asr", 1),
+        ("vggblstmp", "lstm", "espnet.nets.chainer_backend.e2e_asr", 2),
+        ("vggblstmp", "lstm", "espnet.nets.pytorch_backend.e2e_asr", 3),
+        ("bgrup", "gru", "espnet.nets.chainer_backend.e2e_asr", 4),
+        ("bgrup", "gru", "espnet.nets.pytorch_backend.e2e_asr", 5),
+        ("vggbgrup", "gru", "espnet.nets.chainer_backend.e2e_asr", 6),
+        ("vggbgrup", "gru", "espnet.nets.pytorch_backend.e2e_asr", 7),
+    ],
+)
 def test_recognition_results_with_lm(etype, dtype, m_str, text_idx1):
     const = 1e-4
     numpy.random.seed(1)
-    seq_true_texts = [["o", "iuiuiuiuiuiuiuiuo", "aiaiaiaiaiaiaiaio"],
-                      ["o", "uiuiuiuiuiuiuiuio", "aiaiaiaiaiaiaiaio"],
-                      ["o", "iuiuiuiuiuiuiuiuo", "aiaiaiaiaiaiaiaio"],
-                      ["o", "uiuiuiuiuiuiuiuio", "aiaiaiaiaiaiaiaio"],
-                      ["o", "iuiuiuiuiuiuiuiuo", "aiaiaiaiaiaiaiaio"],
-                      ["o", "uiuiuiuiuiuiuiuio", "aiaiaiaiaiaiaiaio"],
-                      ["o", "iuiuiuiuiuiuiuiuo", "aiaiaiaiaiaiaiaio"],
-                      ["o", "uiuiuiuiuiuiuiuio", "aiaiaiaiaiaiaiaio"]]
+    seq_true_texts = [
+        ["o", "iuiuiuiuiuiuiuiuo", "aiaiaiaiaiaiaiaio"],
+        ["o", "uiuiuiuiuiuiuiuio", "aiaiaiaiaiaiaiaio"],
+        ["o", "iuiuiuiuiuiuiuiuo", "aiaiaiaiaiaiaiaio"],
+        ["o", "uiuiuiuiuiuiuiuio", "aiaiaiaiaiaiaiaio"],
+        ["o", "iuiuiuiuiuiuiuiuo", "aiaiaiaiaiaiaiaio"],
+        ["o", "uiuiuiuiuiuiuiuio", "aiaiaiaiaiaiaiaio"],
+        ["o", "iuiuiuiuiuiuiuiuo", "aiaiaiaiaiaiaiaio"],
+        ["o", "uiuiuiuiuiuiuiuio", "aiaiaiaiaiaiaiaio"],
+    ]
 
     # ctc_weight: 0.0 (attention), 0.5 (hybrid CTC/attention), 1.0 (CTC)
     for text_idx2, ctc_weight in enumerate([0.0, 0.5, 1.0]):
         seq_true_text = seq_true_texts[text_idx1][text_idx2]
 
-        args = make_arg(etype=etype, rnnlm="dummy", ctc_weight=ctc_weight,
-                        lm_weight=0.3)
+        args = make_arg(etype=etype, rnnlm="dummy", ctc_weight=ctc_weight, lm_weight=0.3)
         m = importlib.import_module(m_str)
         model = m.E2E(40, 5, args)
 
         if "pytorch" in m_str:
-            rnnlm = lm_pytorch.ClassifierWithState(
-                lm_pytorch.RNNLM(len(args.char_list), 2, 10))
+            rnnlm = lm_pytorch.ClassifierWithState(lm_pytorch.RNNLM(len(args.char_list), 2, 10))
             init_torch_weight_const(model, const)
             init_torch_weight_const(rnnlm, const)
         else:
-            rnnlm = lm_chainer.ClassifierWithState(
-                lm_chainer.RNNLM(len(args.char_list), 2, 10))
+            rnnlm = lm_chainer.ClassifierWithState(lm_chainer.RNNLM(len(args.char_list), 2, 10))
             init_chainer_weight_const(model, const)
             init_chainer_weight_const(rnnlm, const)
 
-        data = [
-            ("aaa", dict(feat=numpy.random.randn(100, 40).astype(
-                numpy.float32), token=seq_true_text))
-        ]
+        data = [("aaa", dict(feat=numpy.random.randn(100, 40).astype(numpy.float32), token=seq_true_text,),)]
 
         in_data = data[0][1]["feat"]
         nbest_hyps = model.recognize(in_data, args, args.char_list, rnnlm)
-        y_hat = nbest_hyps[0]['yseq'][1:]
+        y_hat = nbest_hyps[0]["yseq"][1:]
         seq_hat = [args.char_list[int(idx)] for idx in y_hat]
-        seq_hat_text = "".join(seq_hat).replace('<space>', ' ')
+        seq_hat_text = "".join(seq_hat).replace("<space>", " ")
         seq_true_text = data[0][1]["token"]
 
         assert seq_hat_text == seq_true_text
 
 
-@pytest.mark.parametrize(("etype", "dtype", "m_str"), [
-    ("blstmp", "lstm", "espnet.nets.chainer_backend.e2e_asr"),
-    ("blstmp", "lstm", "espnet.nets.pytorch_backend.e2e_asr"),
-    ("vggblstmp", "lstm", "espnet.nets.chainer_backend.e2e_asr"),
-    ("vggblstmp", "lstm", "espnet.nets.pytorch_backend.e2e_asr"),
-    ("bgrup", "gru", "espnet.nets.chainer_backend.e2e_asr"),
-    ("bgrup", "gru", "espnet.nets.pytorch_backend.e2e_asr"),
-    ("vggbgrup", "gru", "espnet.nets.chainer_backend.e2e_asr"),
-    ("vggbgrup", "gru", "espnet.nets.pytorch_backend.e2e_asr"),
-])
+@pytest.mark.parametrize(
+    ("etype", "dtype", "m_str"),
+    [
+        ("blstmp", "lstm", "espnet.nets.chainer_backend.e2e_asr"),
+        ("blstmp", "lstm", "espnet.nets.pytorch_backend.e2e_asr"),
+        ("vggblstmp", "lstm", "espnet.nets.chainer_backend.e2e_asr"),
+        ("vggblstmp", "lstm", "espnet.nets.pytorch_backend.e2e_asr"),
+        ("bgrup", "gru", "espnet.nets.chainer_backend.e2e_asr"),
+        ("bgrup", "gru", "espnet.nets.pytorch_backend.e2e_asr"),
+        ("vggbgrup", "gru", "espnet.nets.chainer_backend.e2e_asr"),
+        ("vggbgrup", "gru", "espnet.nets.pytorch_backend.e2e_asr"),
+    ],
+)
 def test_batch_beam_search(etype, dtype, m_str):
     const = 1e-4
     numpy.random.seed(1)
 
     # ctc_weight: 0.0 (attention), 0.5 (hybrid CTC/attention), 1.0 (CTC)
     for ctc_weight in [0.0, 0.5]:
-        args = make_arg(etype=etype, rnnlm="dummy", ctc_weight=ctc_weight,
-                        lm_weight=0.3)
+        args = make_arg(etype=etype, rnnlm="dummy", ctc_weight=ctc_weight, lm_weight=0.3)
         m = importlib.import_module(m_str)
         model = m.E2E(40, 5, args)
 
         if "pytorch" in m_str:
-            rnnlm = lm_pytorch.ClassifierWithState(
-                lm_pytorch.RNNLM(len(args.char_list), 2, 10))
+            rnnlm = lm_pytorch.ClassifierWithState(lm_pytorch.RNNLM(len(args.char_list), 2, 10))
             init_torch_weight_const(model, const)
             init_torch_weight_const(rnnlm, const)
         else:
@@ -228,35 +230,35 @@ def test_batch_beam_search(etype, dtype, m_str):
                 s_nbest_hyps = model.recognize(in_data, args, args.char_list, rnnlm)
                 b_nbest_hyps = model.recognize_batch([in_data], args, args.char_list, rnnlm)
 
-            assert s_nbest_hyps[0]['yseq'] == b_nbest_hyps[0][0]['yseq']
+            assert s_nbest_hyps[0]["yseq"] == b_nbest_hyps[0][0]["yseq"]
 
         if ctc_weight > 0.0:
             args.ctc_window_margin = 40
             s_nbest_hyps = model.recognize(in_data, args, args.char_list, rnnlm)
             b_nbest_hyps = model.recognize_batch([in_data], args, args.char_list, rnnlm)
-            assert s_nbest_hyps[0]['yseq'] == b_nbest_hyps[0][0]['yseq']
+            assert s_nbest_hyps[0]["yseq"] == b_nbest_hyps[0][0]["yseq"]
 
         # Test word LM in batch decoding
         if "pytorch" in m_str:
             rand_range = (-0.01, 0.01)
             torch.manual_seed(1)
-            char_list = ['<blank>', '<space>'] + args.char_list + ['<eos>']
-            args = make_arg(etype=etype, rnnlm="dummy", ctc_weight=ctc_weight,
-                            ctc_window_margin=40, lm_weight=0.3, beam_size=5)
+            char_list = ["<blank>", "<space>"] + args.char_list + ["<eos>"]
+            args = make_arg(
+                etype=etype, rnnlm="dummy", ctc_weight=ctc_weight, ctc_window_margin=40, lm_weight=0.3, beam_size=5,
+            )
             m = importlib.import_module(m_str)
             model = m.E2E(40, len(char_list), args)
 
             char_dict = {x: i for i, x in enumerate(char_list)}
             word_dict = {x: i for i, x in enumerate(args.word_list)}
 
-            word_rnnlm = lm_pytorch.ClassifierWithState(
-                lm_pytorch.RNNLM(len(args.word_list), 2, 10))
+            word_rnnlm = lm_pytorch.ClassifierWithState(lm_pytorch.RNNLM(len(args.word_list), 2, 10))
             rnnlm = lm_pytorch.ClassifierWithState(
-                extlm_pytorch.LookAheadWordLM(word_rnnlm.predictor,
-                                              word_dict, char_dict))
+                extlm_pytorch.LookAheadWordLM(word_rnnlm.predictor, word_dict, char_dict)
+            )
             init_torch_weight_random(model, rand_range)
             init_torch_weight_random(rnnlm, rand_range)
 
             s_nbest_hyps = model.recognize(in_data, args, char_list, rnnlm)
             b_nbest_hyps = model.recognize_batch([in_data], args, char_list, rnnlm)
-            assert s_nbest_hyps[0]['yseq'] == b_nbest_hyps[0][0]['yseq']
+            assert s_nbest_hyps[0]["yseq"] == b_nbest_hyps[0][0]["yseq"]

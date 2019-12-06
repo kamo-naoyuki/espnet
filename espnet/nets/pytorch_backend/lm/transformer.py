@@ -19,18 +19,18 @@ class TransformerLM(nn.Module, LMInterface):
     @staticmethod
     def add_arguments(parser):
         """Add arguments to command line argument parser."""
-        parser.add_argument('--layer', type=int, default=4,
-                            help='Number of hidden layers')
-        parser.add_argument('--unit', type=int, default=1024,
-                            help='Number of hidden units in feedforward layer')
-        parser.add_argument('--att-unit', type=int, default=256,
-                            help='Number of hidden units in attention layer')
-        parser.add_argument('--head', type=int, default=2,
-                            help='Number of multi head attention')
-        parser.add_argument('--dropout-rate', type=float, default=0.5,
-                            help='dropout probability')
-        parser.add_argument('--posenc-len', type=int, default=10000,
-                            help='Predefined length of positional encoding cache')
+        parser.add_argument("--layer", type=int, default=4, help="Number of hidden layers")
+        parser.add_argument(
+            "--unit", type=int, default=1024, help="Number of hidden units in feedforward layer",
+        )
+        parser.add_argument(
+            "--att-unit", type=int, default=256, help="Number of hidden units in attention layer",
+        )
+        parser.add_argument("--head", type=int, default=2, help="Number of multi head attention")
+        parser.add_argument("--dropout-rate", type=float, default=0.5, help="dropout probability")
+        parser.add_argument(
+            "--posenc-len", type=int, default=10000, help="Predefined length of positional encoding cache",
+        )
         return parser
 
     def __init__(self, n_vocab, args):
@@ -42,12 +42,19 @@ class TransformerLM(nn.Module, LMInterface):
 
         """
         nn.Module.__init__(self)
-        self.model_type = 'Transformer'
+        self.model_type = "Transformer"
         self.src_mask = None
         self.encoder = Encoder(
-            n_vocab, args.att_unit, args.head, args.unit, args.layer,
-            args.dropout_rate, args.dropout_rate, args.dropout_rate,
-            input_layer="embed")
+            n_vocab,
+            args.att_unit,
+            args.head,
+            args.unit,
+            args.layer,
+            args.dropout_rate,
+            args.dropout_rate,
+            args.dropout_rate,
+            input_layer="embed",
+        )
         # reset posenc
         self.encoder.embed[1] = PositionalEncoding(args.att_unit, args.dropout_rate, args.posenc_len)
         self.decoder = nn.Linear(args.att_unit, n_vocab)
@@ -74,7 +81,7 @@ class TransformerLM(nn.Module, LMInterface):
             The last two return values are used in perplexity: p(t)^{-n} = exp(-log p(t) / n)
 
         """
-        xm = (x != 0)
+        xm = x != 0
         h, _ = self.encoder(x, self._target_mask(x))
         y = self.decoder(h)
         loss = F.cross_entropy(y.view(-1, y.shape[-1]), t.view(-1), reduction="none")

@@ -38,7 +38,7 @@ class CTCPrefixScoreTH(object):
         self.odim = x.size(2)
         self.beam = beam
         self.n_bb = self.batch * beam
-        self.device = torch.device('cuda:%d' % x.get_device()) if x.is_cuda else torch.device('cpu')
+        self.device = torch.device("cuda:%d" % x.get_device()) if x.is_cuda else torch.device("cpu")
         # Pad the rest of posteriors in the batch
         # TODO(takaaki-hori): need a better way without for-loops
         for i, l in enumerate(xlens):
@@ -82,13 +82,18 @@ class CTCPrefixScoreTH(object):
         # prepare state info
         if state is None:
             if self.scoring_num > 0:
-                r_prev = torch.full((self.input_length, 2, self.batch, self.beam),
-                                    self.logzero, dtype=torch.float32, device=self.device)
+                r_prev = torch.full(
+                    (self.input_length, 2, self.batch, self.beam),
+                    self.logzero,
+                    dtype=torch.float32,
+                    device=self.device,
+                )
                 r_prev[:, 1] = torch.cumsum(self.x[0, :, :, self.blank], 0).unsqueeze(2)
                 r_prev = r_prev.view(-1, 2, self.n_bb)
             else:
-                r_prev = torch.full((self.input_length, 2, self.n_bb),
-                                    self.logzero, dtype=torch.float32, device=self.device)
+                r_prev = torch.full(
+                    (self.input_length, 2, self.n_bb), self.logzero, dtype=torch.float32, device=self.device,
+                )
                 r_prev[:, 1] = torch.cumsum(self.x[0, :, :, self.blank], 0)
             s_prev = 0.0
             f_min_prev = 0
@@ -104,8 +109,9 @@ class CTCPrefixScoreTH(object):
             snum = scoring_ids.size(1)
             scoring_idmap[self.bb_idx, scoring_ids] = torch.arange(snum, device=self.device)
             scoring_idx = (scoring_ids + self.pad_o).view(-1)
-            x_ = torch.index_select(self.x.view(2, -1, self.batch * self.odim),
-                                    2, scoring_idx).view(2, -1, self.n_bb, snum)
+            x_ = torch.index_select(self.x.view(2, -1, self.batch * self.odim), 2, scoring_idx).view(
+                2, -1, self.n_bb, snum
+            )
         else:
             scoring_ids = None
             scoring_idmap = None
@@ -114,8 +120,7 @@ class CTCPrefixScoreTH(object):
 
         # new CTC forward probs are prepared as a (T x 2 x BW x S) tensor
         # that corresponds to r_t^n(h) and r_t^b(h) in a batch.
-        r = torch.full((self.input_length, 2, self.n_bb, snum),
-                       self.logzero, dtype=torch.float32, device=self.device)
+        r = torch.full((self.input_length, 2, self.n_bb, snum), self.logzero, dtype=torch.float32, device=self.device,)
         if output_length == 0:
             r[0, 0] = x_[0, 0]
 
@@ -152,11 +157,11 @@ class CTCPrefixScoreTH(object):
         log_phi_x = torch.cat((log_phi[0].unsqueeze(0), log_phi[:-1]), dim=0) + x_[0]
         if scoring_ids is not None:
             log_psi = torch.full((self.n_bb, self.odim), self.logzero, device=self.device)
-            log_psi_ = torch.logsumexp(torch.cat((log_phi_x[start:end], r[start - 1, 0].unsqueeze(0)), dim=0), dim=0)
+            log_psi_ = torch.logsumexp(torch.cat((log_phi_x[start:end], r[start - 1, 0].unsqueeze(0)), dim=0), dim=0,)
             for si in range(self.n_bb):
                 log_psi[si, scoring_ids[si]] = log_psi_[si]
         else:
-            log_psi = torch.logsumexp(torch.cat((log_phi_x[start:end], r[start - 1, 0].unsqueeze(0)), dim=0), dim=0)
+            log_psi = torch.logsumexp(torch.cat((log_phi_x[start:end], r[start - 1, 0].unsqueeze(0)), dim=0), dim=0,)
 
         for si in range(self.n_bb):
             log_psi[si, self.eos] = r_sum[self.end_frames[si], si]

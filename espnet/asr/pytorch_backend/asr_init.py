@@ -107,10 +107,11 @@ def filter_modules(model_state_dict, modules):
             incorrect_mods += [mod]
 
     if incorrect_mods:
-        logging.warning("module(s) %s don\'t match or (partially match) "
-                        "available modules in model.", incorrect_mods)
-        logging.warning('for information, the existing modules in model are:')
-        logging.warning('%s', mods_model)
+        logging.warning(
+            "module(s) %s don't match or (partially match) " "available modules in model.", incorrect_mods,
+        )
+        logging.warning("for information, the existing modules in model are:")
+        logging.warning("%s", mods_model)
 
     return new_mods
 
@@ -122,10 +123,9 @@ def load_trained_model(model_path):
         model_path (str): Path to model.***.best
 
     """
-    idim, odim, train_args = get_model_conf(
-        model_path, os.path.join(os.path.dirname(model_path), 'model.json'))
+    idim, odim, train_args = get_model_conf(model_path, os.path.join(os.path.dirname(model_path), "model.json"))
 
-    logging.warning('reading model parameters from ' + model_path)
+    logging.warning("reading model parameters from " + model_path)
 
     if hasattr(train_args, "model_module"):
         model_module = train_args.model_module
@@ -150,15 +150,15 @@ def get_trained_model_state_dict(model_path):
         (str): Type of model. Either ASR/MT or LM.
 
     """
-    conf_path = os.path.join(os.path.dirname(model_path), 'model.json')
-    if 'rnnlm' in model_path:
-        logging.warning('reading model parameters from %s', model_path)
+    conf_path = os.path.join(os.path.dirname(model_path), "model.json")
+    if "rnnlm" in model_path:
+        logging.warning("reading model parameters from %s", model_path)
 
-        return torch.load(model_path), 'lm'
+        return torch.load(model_path), "lm"
 
     idim, odim, args = get_model_conf(model_path, conf_path)
 
-    logging.warning('reading model parameters from ' + model_path)
+    logging.warning("reading model parameters from " + model_path)
 
     if hasattr(args, "model_module"):
         model_module = args.model_module
@@ -170,7 +170,7 @@ def get_trained_model_state_dict(model_path):
     torch_load(model_path, model)
     assert isinstance(model, MTInterface) or isinstance(model, ASRInterface)
 
-    return model.state_dict(), 'asr-mt'
+    return model.state_dict(), "asr-mt"
 
 
 def load_trained_modules(idim, odim, args, interface=ASRInterface):
@@ -197,30 +197,33 @@ def load_trained_modules(idim, odim, args, interface=ASRInterface):
 
     main_state_dict = main_model.state_dict()
 
-    logging.warning('model(s) found for pre-initialization')
-    for model_path, modules in [(enc_model_path, enc_modules),
-                                (dec_model_path, dec_modules)]:
+    logging.warning("model(s) found for pre-initialization")
+    for model_path, modules in [
+        (enc_model_path, enc_modules),
+        (dec_model_path, dec_modules),
+    ]:
         if model_path is not None:
             if os.path.isfile(model_path):
                 model_state_dict, mode = get_trained_model_state_dict(model_path)
 
                 modules = filter_modules(model_state_dict, modules)
-                if mode == 'lm':
+                if mode == "lm":
                     partial_state_dict, modules = get_partial_lm_state_dict(model_state_dict, modules)
                 else:
                     partial_state_dict = get_partial_asr_mt_state_dict(model_state_dict, modules)
 
                     if partial_state_dict:
                         if transfer_verification(main_state_dict, partial_state_dict, modules):
-                            logging.warning('loading %s from model: %s', modules, model_path)
+                            logging.warning("loading %s from model: %s", modules, model_path)
                             for k in partial_state_dict.keys():
-                                logging.warning('override %s' % k)
+                                logging.warning("override %s" % k)
                             main_state_dict.update(partial_state_dict)
                         else:
-                            logging.warning('modules %s in model %s don\'t match your training config',
-                                            modules, model_path)
+                            logging.warning(
+                                "modules %s in model %s don't match your training config", modules, model_path,
+                            )
             else:
-                logging.warning('model was not found : %s', model_path)
+                logging.warning("model was not found : %s", model_path)
 
     main_model.load_state_dict(main_state_dict)
 

@@ -9,19 +9,20 @@ from espnet.nets.pytorch_backend.nets_utils import make_pad_mask
 
 
 class DNN_WPE(torch.nn.Module):
-    def __init__(self,
-                 wtype: str = 'blstmp',
-                 widim: int = 257,
-                 wlayers: int = 3,
-                 wunits: int = 300,
-                 wprojs: int = 320,
-                 dropout_rate: float = 0.0,
-                 taps: int = 5,
-                 delay: int = 3,
-                 use_dnn_mask: bool = True,
-                 iterations: int = 1,
-                 normalization: bool = False,
-                 ):
+    def __init__(
+        self,
+        wtype: str = "blstmp",
+        widim: int = 257,
+        wlayers: int = 3,
+        wunits: int = 300,
+        wprojs: int = 320,
+        dropout_rate: float = 0.0,
+        taps: int = 5,
+        delay: int = 3,
+        use_dnn_mask: bool = True,
+        iterations: int = 1,
+        normalization: bool = False,
+    ):
         super().__init__()
         self.iterations = iterations
         self.taps = taps
@@ -33,12 +34,11 @@ class DNN_WPE(torch.nn.Module):
         self.inverse_power = True
 
         if self.use_dnn_mask:
-            self.mask_est = MaskEstimator(
-                wtype, widim, wlayers, wunits, wprojs, dropout_rate, nmask=1)
+            self.mask_est = MaskEstimator(wtype, widim, wlayers, wunits, wprojs, dropout_rate, nmask=1)
 
-    def forward(self,
-                data: ComplexTensor, ilens: torch.LongTensor) \
-            -> Tuple[ComplexTensor, torch.LongTensor, ComplexTensor]:
+    def forward(
+        self, data: ComplexTensor, ilens: torch.LongTensor
+    ) -> Tuple[ComplexTensor, torch.LongTensor, ComplexTensor]:
         """The forward function
 
         Notation:
@@ -75,9 +75,8 @@ class DNN_WPE(torch.nn.Module):
 
             # enhanced: (..., C, T) -> (..., C, T)
             enhanced = wpe_one_iteration(
-                data.contiguous(), power,
-                taps=self.taps, delay=self.delay,
-                inverse_power=self.inverse_power)
+                data.contiguous(), power, taps=self.taps, delay=self.delay, inverse_power=self.inverse_power,
+            )
 
             enhanced.masked_fill_(make_pad_mask(ilens, enhanced.real), 0)
 

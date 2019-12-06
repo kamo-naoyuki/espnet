@@ -90,8 +90,9 @@ class PartialScorerInterface(ScorerInterface):
         """
         raise NotImplementedError
 
-    def score_partial(self, y: torch.Tensor, next_tokens: torch.Tensor, state: Any, x: torch.Tensor) \
-            -> Tuple[torch.Tensor, Any]:
+    def score_partial(
+        self, y: torch.Tensor, next_tokens: torch.Tensor, state: Any, x: torch.Tensor
+    ) -> Tuple[torch.Tensor, Any]:
         """Score new token (required).
 
         Args:

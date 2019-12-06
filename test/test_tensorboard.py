@@ -31,23 +31,19 @@ def test_tensorboard_evaluator():
 
     # test runnable without tensorboard logger
     trainer = chainer.training.Trainer(
-        chainer.training.StandardUpdater(
-            chainer.iterators.SerialIterator(data, batch_size), optimizer),
-        (epoch, "epoch"))
-    trainer.extend(BaseEvaluator(
-        chainer.iterators.SerialIterator(data, batch_size, repeat=False),
-        model))
+        chainer.training.StandardUpdater(chainer.iterators.SerialIterator(data, batch_size), optimizer),
+        (epoch, "epoch"),
+    )
+    trainer.extend(BaseEvaluator(chainer.iterators.SerialIterator(data, batch_size, repeat=False), model))
     trainer.run()
 
     # test runnable with tensorboard logger
     for log_interval in [1, 3]:
         trainer = chainer.training.Trainer(
-            chainer.training.StandardUpdater(
-                chainer.iterators.SerialIterator(data, batch_size), optimizer),
-            (epoch, "epoch"))
-        trainer.extend(BaseEvaluator(
-            chainer.iterators.SerialIterator(data, batch_size, repeat=False),
-            model))
+            chainer.training.StandardUpdater(chainer.iterators.SerialIterator(data, batch_size), optimizer),
+            (epoch, "epoch"),
+        )
+        trainer.extend(BaseEvaluator(chainer.iterators.SerialIterator(data, batch_size, repeat=False), model))
         writer = DummyWriter()
         trainer.extend(TensorboardLogger(writer), trigger=(log_interval, "iteration"))
         trainer.run()

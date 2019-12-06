@@ -8,7 +8,7 @@ import chainer
 import numpy
 import pytest
 
-pytest.importorskip('torch')
+pytest.importorskip("torch")
 import torch  # NOQA
 
 
@@ -31,11 +31,14 @@ class ThModel(torch.nn.Module):
         return self.a(x).sum()
 
 
-@pytest.mark.parametrize("ch_opt_t,th_opt_t", [
-    (chainer.optimizers.SGD, lambda ps: torch.optim.SGD(ps, lr=0.01)),
-    (chainer.optimizers.Adam, torch.optim.Adam),
-    (chainer.optimizers.AdaDelta, lambda ps: torch.optim.Adadelta(ps, rho=0.95))
-])
+@pytest.mark.parametrize(
+    "ch_opt_t,th_opt_t",
+    [
+        (chainer.optimizers.SGD, lambda ps: torch.optim.SGD(ps, lr=0.01)),
+        (chainer.optimizers.Adam, torch.optim.Adam),
+        (chainer.optimizers.AdaDelta, lambda ps: torch.optim.Adadelta(ps, rho=0.95)),
+    ],
+)
 def test_optimizer(ch_opt_t, th_opt_t):
     if not torch.__version__.startswith("0.3."):
         torch.set_grad_enabled(True)
@@ -62,7 +65,5 @@ def test_optimizer(ch_opt_t, th_opt_t):
     numpy.testing.assert_allclose(ch_loss.data, th_loss.item(), rtol=1e-6)
     ch_opt.update()
     th_opt.step()
-    numpy.testing.assert_allclose(
-        ch_model.a.W.data, th_model.a.weight.data.numpy(), rtol=1e-6)
-    numpy.testing.assert_allclose(
-        ch_model.a.b.data, th_model.a.bias.data.numpy(), rtol=1e-6)
+    numpy.testing.assert_allclose(ch_model.a.W.data, th_model.a.weight.data.numpy(), rtol=1e-6)
+    numpy.testing.assert_allclose(ch_model.a.b.data, th_model.a.bias.data.numpy(), rtol=1e-6)

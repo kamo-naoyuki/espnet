@@ -139,9 +139,17 @@ class TimeMask(FuncTrans):
         return super().__call__(x)
 
 
-def spec_augment(x, resize_mode="PIL", max_time_warp=80,
-                 max_freq_width=27, n_freq_mask=2,
-                 max_time_width=100, n_time_mask=2, inplace=True, replace_with_zero=True):
+def spec_augment(
+    x,
+    resize_mode="PIL",
+    max_time_warp=80,
+    max_freq_width=27,
+    n_freq_mask=2,
+    max_time_width=100,
+    n_time_mask=2,
+    inplace=True,
+    replace_with_zero=True,
+):
     """spec agument
 
     apply random time warping and time/freq masking
@@ -160,8 +168,8 @@ def spec_augment(x, resize_mode="PIL", max_time_warp=80,
     assert isinstance(x, numpy.ndarray)
     assert x.ndim == 2
     x = time_warp(x, max_time_warp, inplace=inplace, mode=resize_mode)
-    x = freq_mask(x, max_freq_width, n_freq_mask, inplace=inplace, replace_with_zero=replace_with_zero)
-    x = time_mask(x, max_time_width, n_time_mask, inplace=inplace, replace_with_zero=replace_with_zero)
+    x = freq_mask(x, max_freq_width, n_freq_mask, inplace=inplace, replace_with_zero=replace_with_zero,)
+    x = time_mask(x, max_time_width, n_time_mask, inplace=inplace, replace_with_zero=replace_with_zero,)
     return x
 
 

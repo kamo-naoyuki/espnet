@@ -67,5 +67,6 @@ class DurationCalculator(torch.nn.Module):
 
     def _calculate_encoder_decoder_attentions(self, xs, ilens, ys, olens, spembs=None):
         att_dict = self.teacher_model.calculate_all_attentions(
-            xs, ilens, ys, olens, spembs=spembs, skip_output=True, keep_tensor=True)
+            xs, ilens, ys, olens, spembs=spembs, skip_output=True, keep_tensor=True
+        )
         return torch.cat([att_dict[k] for k in att_dict.keys() if "src_attn" in k], dim=1)  # (B, H*L, Lmax, Tmax)

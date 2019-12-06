@@ -6,6 +6,7 @@
 [![CircleCI](https://circleci.com/gh/espnet/espnet.svg?style=svg)](https://circleci.com/gh/espnet/espnet)
 [![codecov](https://codecov.io/gh/espnet/espnet/branch/master/graph/badge.svg)](https://codecov.io/gh/espnet/espnet)
 [![Gitter](https://badges.gitter.im/espnet-en/community.svg)](https://gitter.im/espnet-en/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 ESPnet is an end-to-end speech processing toolkit, mainly focuses on end-to-end speech recognition and end-to-end text-to-speech.
 ESPnet uses [chainer](https://chainer.org/) and [pytorch](http://pytorch.org/) as a main deep learning engine,
@@ -67,11 +68,11 @@ and also follows [Kaldi](http://kaldi-asr.org/) style data processing, feature e
 - Python 3.6.1+
 - gcc 4.9+ for PyTorch1.0.0+
 - protocol buffer
-    - For the sentencepiece, you need to install via package manager e.g.  
-      `sudo apt-get install libprotobuf9v5 protobuf-compiler libprotobuf-dev`.  
+    - For the sentencepiece, you need to install via package manager e.g.
+      `sudo apt-get install libprotobuf9v5 protobuf-compiler libprotobuf-dev`.
       See details `Installation` of https://github.com/google/sentencepiece/blob/master/README.md
 - libsndfile
-    - For the soundfile, you need to install via package manager e.g.  
+    - For the soundfile, you need to install via package manager e.g.
       `sudo apt-get install libsndfile1-dev`.
 
 Optionally, GPU environment requires the following libraries:
@@ -478,7 +479,7 @@ If you want to use the above pretrained vocoders, please exactly match the featu
 
 ### TTS demo
 
-(**New!**) We made a new real-time E2E-TTS demosntration in Google Colab.  
+(**New!**) We made a new real-time E2E-TTS demosntration in Google Colab.
 Please access the notebook from the following button and enjoy the real-time sythesis!
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/espnet/notebook/blob/master/tts_realtime_demo.ipynb)
