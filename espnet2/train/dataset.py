@@ -224,4 +224,4 @@ class ESPnetDataset(Dataset):
             data[name] = value
 
         assert check_return_type(data)
-        return data
+        return uid, data

@@ -8,6 +8,10 @@ from typeguard import check_argument_types
 from typeguard import check_return_type
 from typing import Collection
 
+from typing import Tuple
+
+from typing import List
+
 from espnet.nets.pytorch_backend.nets_utils import pad_list
 
 
@@ -41,11 +45,11 @@ class CommonCollateFn:
 
 
 def common_collate_fn(
-    data: Sequence[Dict[str, np.ndarray]],
+    data: Sequence[Tuple[str, Dict[str, np.ndarray]]],
     float_pad_value: Union[float, int] = 0.0,
     int_pad_value: int = -32768,
     not_sequence: Collection[str] = (),
-) -> Dict[str, torch.Tensor]:
+) -> Tuple[List[str], Dict[str, torch.Tensor]]:
     """Concatenate ndarray-list to an array and convert to torch.Tensor.
 
     Examples:
@@ -63,22 +67,22 @@ def common_collate_fn(
 
     """
     assert check_argument_types()
-    assert all(set(data[0]) == set(d) for d in data), "dict-keys mismatching"
+    assert all(set(data[0][1]) == set(d[1]) for d in data), "dict-keys mismatching"
     assert all(
-        not k.endswith("_lengths") for k in data[0]
-    ), f"*_lengths is reserved: {list(data[0])}"
+        not k.endswith("_lengths") for k in data[0][1]
+    ), f"*_lengths is reserved: {list(data[0][1])}"
 
     output = {}
-    for key in data[0]:
+    for key in data[0][1]:
         # NOTE(kamo):
         # Each models, which accepts these values finally, are responsible
         # to repaint the pad_value to the desired value for each tasks.
-        if data[0][key].dtype.kind == "i":
+        if data[0][1][key].dtype.kind == "i":
             pad_value = int_pad_value
         else:
             pad_value = float_pad_value
 
-        array_list = [d[key] for d in data]
+        array_list = [d[1][key] for d in data]
 
         # Assume the first axis is length:
         # tensor_list: Batch x (Length, ...)
@@ -87,14 +91,15 @@ def common_collate_fn(
         tensor = pad_list(tensor_list, pad_value)
         output[key] = tensor
 
-        assert all(len(d[key]) != 0 for d in data), [len(d[key]) for d in data]
+        assert all(len(d[1][key]) != 0 for d in data), [len(d[1][key]) for d in data]
 
         # lens: (Batch,)
         if key not in not_sequence:
             lens = torch.tensor(
-                [d[key].shape[0] for d in data], dtype=torch.long
+                [d[1][key].shape[0] for d in data], dtype=torch.long
             )
             output[key + "_lengths"] = lens
 
-    assert check_return_type(output)
-    return output
+    retval = [d[0] for d in data], output
+    assert check_return_type(retval)
+    return retval

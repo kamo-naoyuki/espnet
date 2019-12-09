@@ -21,7 +21,7 @@ class DatadirWriter:
         self.chilidren = {}
         self.fd = None
         self.has_children = False
-        self.keys = set()
+        self._keys = set()
 
     def __enter__(self):
         return self
@@ -44,15 +44,24 @@ class DatadirWriter:
         assert check_argument_types()
         if self.has_children:
             raise RuntimeError("This writer points out a directory")
-        if key in self.keys:
+        if key in self._keys:
             warnings.warn(f"Duplicated: {key}")
 
         if self.fd is None:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             self.fd = self.path.open("w")
 
-        self.keys.add(key)
+        self._keys.add(key)
         self.fd.write(f"{key} {value}\n")
+
+    def keys(self):
+        if self.has_children:
+            return self.chilidren.keys()
+        else:
+            return self._keys
+
+    def __iter__(self):
+        return iter(self.keys())
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
