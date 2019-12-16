@@ -30,8 +30,6 @@ nlsyms=
 
 
 oov="<unk>"
-blank="<blank>"
-sos_eos="<sos/eos>"
 
 
 log "$0 $*"
@@ -108,9 +106,7 @@ fi
 
 # 2. Recreate "tokens.txt":
 # 0 is blank, 1~Nvocab: token, Nvocab+1: SOS/EOS
-echo "${blank}" > "${dir}"/tokens.txt
-cat "${token_list}" >> "${dir}"/tokens.txt
-echo "${sos_eos}" >> "${dir}"/tokens.txt
+cp "${token_list}" "${dir}"/tokens.txt
 
 
 # 3. Create "token_int"

@@ -155,6 +155,16 @@ class ASRE2E(AbsE2E):
         )
         return loss, stats, weight
 
+    def collect_feats(
+        self,
+        speech: torch.Tensor,
+        speech_lengths: torch.Tensor,
+        text: torch.Tensor,
+        text_lengths: torch.Tensor,
+    ) -> Dict[str, torch.Tensor]:
+        feats, feats_lengths = self._extract_feats(speech, speech_lengths)
+        return {"feats": feats, "feats_lengths": feats_lengths}
+
     def encode(
         self, speech: torch.Tensor, speech_lengths: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -164,6 +174,27 @@ class ASRE2E(AbsE2E):
             speech: (Batch, Length, ...)
             speech_lengths: (Batch, )
         """
+        feats, feats_lengths = self._extract_feats(speech, speech_lengths)
+
+        # 3. Forward encoder
+        # feats: (Batch, Length, Dim)
+        # -> encoder_out: (Batch, Length2, Dim2)
+        encoder_out, encoder_out_lens, _ = self.encoder(feats, feats_lengths)
+
+        assert encoder_out.size(0) == speech.size(0), (
+            encoder_out.size(),
+            speech.size(0),
+        )
+        assert encoder_out.size(1) <= encoder_out_lens.max(), (
+            encoder_out.size(),
+            encoder_out_lens.max(),
+        )
+
+        return encoder_out, encoder_out_lens
+
+    def _extract_feats(
+        self, speech: torch.Tensor, speech_lengths: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         assert speech_lengths.dim() == 1, speech_lengths.shape
 
         # for data-parallel
@@ -182,22 +213,7 @@ class ASRE2E(AbsE2E):
         # 2. Normalization for feature: e.g. Global-CMVN, Utterance-CMVN
         if self.normalize is not None:
             feats, feats_lengths = self.normalize(feats, feats_lengths)
-
-        # 3. Forward encoder
-        # feats: (Batch, Length, Dim)
-        # -> encoder_out: (Batch, Length2, Dim2)
-        encoder_out, encoder_out_lens, _ = self.encoder(feats, feats_lengths)
-
-        assert encoder_out.size(0) == speech.size(0), (
-            encoder_out.size(),
-            speech.size(0),
-        )
-        assert encoder_out.size(1) <= encoder_out_lens.max(), (
-            encoder_out.size(),
-            encoder_out_lens.max(),
-        )
-
-        return encoder_out, encoder_out_lens
+        return feats, feats_lengths
 
     def _calc_att_loss(
         self,
