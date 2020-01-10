@@ -102,12 +102,14 @@ class ConstantSortedBatchSampler(AbsSampler):
         shape_file: str,
         sort_in_batch: str = "descending",
         sort_batch: str = "ascending",
+        drop_last: bool = False,
     ):
         assert check_argument_types()
         self.batch_size = batch_size
         self.shape_file = shape_file
         self.sort_in_batch = sort_in_batch
         self.sort_batch = sort_batch
+        self.drop_last = drop_last
 
         # utt2shape: (Length, ...)
         #    uttA 100,...
@@ -126,8 +128,12 @@ class ConstantSortedBatchSampler(AbsSampler):
             )
 
         # batch_list: List[Tuple[str, ...]]
+        if self.drop_last and len(keys) % batch_size != 0:
+            N = len(keys) - 1
+        else:
+            N = len(keys)
         self.batch_list = [
-            tuple(keys[i : i + batch_size]) for i in range(0, len(keys), batch_size)
+            tuple(keys[i : i + batch_size]) for i in range(0, N, batch_size)
         ]
 
         if len(self.batch_list) == 0:
@@ -171,10 +177,11 @@ class ConstantBatchSampler(AbsSampler):
         key_file:
     """
 
-    def __init__(self, batch_size: int, key_file: str):
+    def __init__(self, batch_size: int, key_file: str, drop_last: bool = False):
         assert check_argument_types()
         self.batch_size = batch_size
         self.key_file = key_file
+        self.drop_last = drop_last
 
         # utt2shape:
         #    uttA <anything is o.k>
@@ -198,11 +205,17 @@ class ConstantBatchSampler(AbsSampler):
 
     def __iter__(self) -> Iterator[Tuple[str, ...]]:
         # batch_list: List[Tuple[str, ...]]
+        if self.drop_last and len(self.keys) % self.batch_size != 0:
+            N = len(self.keys) - 1
+        else:
+            N = len(self.keys)
         batch_list = [
             tuple(self.keys[i : i + self.batch_size])
-            for i in range(0, len(self.keys), self.batch_size)
+            for i in range(0, N, self.batch_size)
         ]
         for batch in batch_list:
+            if self.drop_last and len(batch) != self.batch_size:
+                break
             yield batch
 
 
@@ -215,12 +228,14 @@ class SequenceBatchSampler(AbsSampler):
         min_batch_size: int = 1,
         sort_in_batch: str = "descending",
         sort_batch: str = "ascending",
+        drop_last: bool = False,
     ):
         assert check_argument_types()
         self.batch_size = batch_size
         self.shape_files = shape_files
         self.sort_in_batch = sort_in_batch
         self.sort_batch = sort_batch
+        self.drop_last = drop_last
 
         # utt2shape: (Length, ...)
         #    uttA 100,...
@@ -246,6 +261,10 @@ class SequenceBatchSampler(AbsSampler):
             k = keys[start]
             factor = max(int(d[k][0] / m) for d, m in zip(utt2shapes, max_lengths))
             bs = max(min_batch_size, int(batch_size / (1 + factor)))
+
+            if self.drop_last and start + bs > len(keys):
+                break
+
             minibatch_keys = keys[start : start + bs]
             if sort_in_batch == "descending":
                 minibatch_keys.reverse()

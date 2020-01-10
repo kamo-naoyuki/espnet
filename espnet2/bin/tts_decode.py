@@ -3,13 +3,13 @@
 """E2E-TTS decoding."""
 
 import logging
-from pathlib import Path
 import sys
 import time
 from typing import Optional
 from typing import Sequence
 from typing import Tuple
 from typing import Union
+from pathlib import Path
 
 import configargparse
 import kaldiio

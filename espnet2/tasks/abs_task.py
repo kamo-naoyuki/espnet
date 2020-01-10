@@ -18,6 +18,7 @@ from typing import Union
 import configargparse
 import numpy as np
 import torch
+import torch.multiprocessing
 import torch.nn
 import torch.optim
 from torch.utils.data import DataLoader
@@ -39,6 +40,11 @@ from espnet2.train.batch_sampler import ConstantBatchSampler
 from espnet2.train.class_choices import ClassChoices
 from espnet2.train.dataset import ESPnetDataset
 from espnet2.train.distributed_utils import DistributedOption
+from espnet2.train.distributed_utils import get_master_addr
+from espnet2.train.distributed_utils import get_master_port
+from espnet2.train.distributed_utils import get_node_rank
+from espnet2.train.distributed_utils import get_num_nodes
+from espnet2.train.distributed_utils import recommended_port
 from espnet2.train.epoch_iter_factory import AbsIterFactory
 from espnet2.train.epoch_iter_factory import EpochIterFactory
 from espnet2.train.reporter import Reporter
@@ -51,6 +57,12 @@ from espnet2.utils.types import str2bool
 from espnet2.utils.types import str2triple_str
 from espnet2.utils.types import str_or_none
 from espnet2.utils.yaml_no_alias_safe_dump import yaml_no_alias_safe_dump
+
+if LooseVersion(torch.__version__) >= LooseVersion("1.4.0"):
+    from torch.multiprocessing.spawn import ProcessContext
+else:
+    from torch.multiprocessing.spawn import SpawnContext as ProcessContext
+
 
 optim_classes = dict(
     adam=torch.optim.Adam,
@@ -254,15 +266,45 @@ class AbsTask(ABC):
         )
         group.add_argument(
             "--dist_world_size",
-            default=-1,
+            default=1,
             type=int,
             help="number of nodes for distributed training",
         )
         group.add_argument(
             "--dist_rank",
             type=int,
-            default=-1,
+            default=None,
             help="node rank for distributed training",
+        )
+        group.add_argument(
+            # Don't start with "dist_" for compatibility to launch.py
+            "--local_rank",
+            type=int,
+            default=-1,
+            help="local rank for distributed training",
+        )
+        group.add_argument(
+            "--dist_master_addr",
+            default=None,
+            type=str,
+            help="The master address for distributed training. "
+            "This value is used when dist_init_method == 'env://'",
+        )
+        group.add_argument(
+            "--dist_master_port",
+            default=None,
+            type=int,
+            help="The master port for distributed training"
+            "This value is used when dist_init_method == 'env://'",
+        )
+        group.add_argument(
+            "--multiprocessing_distributed",
+            default=True,
+            type=str2bool,
+            help='Use multi-processing distributed training to launch '
+            'N processes per node, which has N GPUs. This is the '
+            'fastest way to use PyTorch for either single node or '
+            'multi node data parallel training'
         )
 
         group = parser.add_argument_group("cudnn mode related")
@@ -652,7 +694,7 @@ class AbsTask(ABC):
         file.write(yaml_no_alias_safe_dump(config, indent=4, sort_keys=False))
 
     @classmethod
-    def main(cls, args: argparse.Namespace = None, cmd: Sequence[str] = None) -> None:
+    def main(cls, args: argparse.Namespace = None, cmd: Sequence[str] = None):
         if cls.num_optimizers != cls.trainer.num_optimizers:
             raise RuntimeError(
                 f"Task.num_optimizers != Task.trainer.num_optimizers: "
@@ -668,6 +710,70 @@ class AbsTask(ABC):
             cls.print_config()
             sys.exit(0)
         cls.check_required_command_args(args)
+
+        if not args.distributed or not args.multiprocessing_distributed:
+            cls.main_worker(args)
+
+        else:
+            # Multi-processing distributed mode: e.g.
+            # |   Host1     |    Host2    |
+            # |   Process1  |   Process2  |  <= Spawn processes
+            # |Child1|Child2|Child1|Child2|
+            # |GPU1  |GPU2  |GPU1  |GPU2  |
+
+            # See also the usage of --multiprocessing-distributed:
+            # https://github.com/pytorch/examples/blob/master/imagenet/main.py
+            world_size = get_num_nodes(args.dist_world_size)
+            if world_size == 1:
+                args.dist_master_addr = "localhost"
+                args.dist_rank = 0
+                # Single node distributed training with multi-GPUs
+                if (
+                    args.dist_init_method == "env://"
+                    and get_master_port(args.dist_master_port) is None
+                ):
+                    # Get the unsed port
+                    args.dist_master_port = recommended_port()
+
+            elif args.dist_init_method == "env://":
+                if get_master_addr(args.dist_master_addr) is None:
+                    raise RuntimeError("Specify --dist_master_addr or set MASTER_ADDR")
+                if get_master_port(args.dist_master_port) is None:
+                    raise RuntimeError("Specify --dist_master_port or set MASTER_PORT")
+                if get_master_port(args.dist_rank) is None:
+                    raise RuntimeError("Specify --dist_rank or set RANK")
+
+            # Assume nodes use same number of GPUs each other
+            args.dist_world_size = args.ngpu * world_size
+
+            dist_rank = get_node_rank(args.dist_rank)
+            assert args.dist_rank is not None
+            assert dist_rank is not None
+            # This block is copied from:
+            # https://github.com/pytorch/pytorch/blob/master/torch/multiprocessing/spawn.py
+            error_queues = []
+            processes = []
+            mp = torch.multiprocessing.get_context("spawn")
+            for i in range(args.ngpu):
+                local_args = argparse.Namespace(**vars(args))
+
+                local_args.local_rank = i
+                local_args.dist_rank = args.ngpu * dist_rank + i
+                local_args.ngpu = 1
+
+                process = mp.Process(
+                    target=cls.main_worker, args=(local_args,), daemon=False
+                )
+                process.start()
+                processes.append(process)
+                error_queues.append(mp.SimpleQueue())
+            # Loop on join until it returns True or raises an exception.
+            while not ProcessContext(processes, error_queues).join():
+                pass
+
+    @classmethod
+    def main_worker(cls, args: argparse.Namespace):
+        assert check_argument_types()
 
         # 0. Init distributed process
         distributed_option = build_dataclass(DistributedOption, args)
@@ -870,13 +976,14 @@ class AbsTask(ABC):
                 distributed_option=distributed_option,
             )
 
-            # Generated n-best averaged model
-            average_nbest_models(
-                reporter=reporter,
-                output_dir=output_dir,
-                best_model_criterion=args.best_model_criterion,
-                nbest=args.keep_n_best_checkpoints,
-            )
+            if not distributed_option.distributed or distributed_option.dist_rank == 0:
+                # Generated n-best averaged model
+                average_nbest_models(
+                    reporter=reporter,
+                    output_dir=output_dir,
+                    best_model_criterion=args.best_model_criterion,
+                    nbest=args.keep_n_best_checkpoints,
+                )
 
     @classmethod
     def build_iter_factory(
@@ -966,9 +1073,15 @@ class AbsTask(ABC):
         if num_batches is not None:
             batches = batches[:num_batches]
 
-        if iterator_option.distributed:
+        if train and iterator_option.distributed:
             world_size = torch.distributed.get_world_size()
             rank = torch.distributed.get_rank()
+            for batch in batches:
+                if len(batch) < world_size:
+                    raise RuntimeError(
+                        f"The batch-size must be equal or more than world_size: "
+                        f"{len(batch)} < {world_size}"
+                    )
             batches = [batch[rank::world_size] for batch in batches]
 
         return (

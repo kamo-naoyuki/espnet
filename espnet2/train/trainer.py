@@ -131,7 +131,14 @@ class Trainer:
             # Use torch DDP instead of apex DDP
             # https://github.com/NVIDIA/apex/issues/494
             ddp_model = torch.nn.parallel.DistributedDataParallel(
-                model, device_ids=list(range(trainer_options.ngpu))
+                model, device_ids=(
+                    # Perform single GPU for each processes
+                    [torch.cuda.current_device()]
+                    if distributed_option.ngpu == 1
+                    # Perform multi-GPUs with threading
+                    else None
+                ),
+                output_device=torch.cuda.current_device(),
             )
         else:
             ddp_model = model
