@@ -124,11 +124,6 @@ def main(cmd=None):
     processes = []
     # Submit command via SSH
     if args.host is not None:
-        if args.envfile is not None:
-            env = ["cd", os.getcwd(), "&&", "source", args.envfile, "&&"]
-        else:
-            env = ["cd", os.getcwd(), "&&"]
-
         hosts = []
         ids_list = []
         # e.g. args.host = "host1:0:2,host2:0,1"
@@ -146,6 +141,11 @@ def main(cmd=None):
         world_size = sum(max(len(x), 1) for x in ids_list)
         logging.info(f"{len(hosts)}nodes with world_size={world_size} via SSH")
 
+        if args.envfile is not None:
+            env = f"source {args.envfile}"
+        else:
+            env = ""
+
         rank = 0
         for host, ids in zip(hosts, ids_list):
             ngpu = 1 if len(ids) > 0 else 0
@@ -153,10 +153,7 @@ def main(cmd=None):
 
             for local_rank in ids:
                 cmd = (
-                    ["ssh", host, "'"]
-                    + env
-                    # arguments for *_train.py
-                    + args.args
+                    args.args
                     + [
                         "--ngpu",
                         str(ngpu),
@@ -175,7 +172,14 @@ def main(cmd=None):
                     # Gloo supports both GPU and CPU mode.
                     #   See: https://pytorch.org/docs/stable/distributed.html
                     cmd += ["--dist_backend", "gloo"]
-                cmd.append("'")
+
+                heredoc = f"""<< EOF
+set -euo pipefail
+cd {os.getcwd()}
+{env}
+{" ".join([c if len(c) != 0 else "''" for c in cmd])}
+EOF
+"""
 
                 if args.log != "-":
                     Path(args.log).parent.mkdir(parents=True, exist_ok=True)
@@ -183,9 +187,11 @@ def main(cmd=None):
                 else:
                     # Output to stdout/stderr
                     f = None
+
                 process = subprocess.Popen(
-                    " ".join(cmd), stdout=f, stderr=f, shell=True
+                    ["ssh", host, "bash", heredoc], stdout=f, stderr=f,
                 )
+
                 processes.append(process)
 
                 rank += 1
@@ -322,8 +328,22 @@ def main(cmd=None):
 
     logging.info(f"log file: {logfile}")
 
+    failed = False
+    while any(p.returncode is None for p in processes):
+        for process in processes:
+            # If any process is failed, try to kill the other processes too
+            if failed and process.returncode is not None:
+                process.kill()
+            else:
+                try:
+                    process.wait(0.5)
+                except subprocess.TimeoutExpired:
+                    pass
+
+                if process.returncode is not None and process.returncode != 0:
+                    failed = True
+
     for process in processes:
-        process.wait()
         if process.returncode != 0:
             raise subprocess.CalledProcessError(returncode=process.returncode, cmd=cmd)
 
