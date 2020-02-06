@@ -301,6 +301,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
                 #   "e.g. call-861225-A-0050-0065 call-861225-A 5.0 6.5"
                 # Where the time is written in seconds.
                 _opts+="--segments data/${dset}/segments "
+                rm "${data_feats}/org/${dset}/segments"
             fi
             # shellcheck disable=SC2086
             scripts/audio/format_wav_scp.sh --nj "${nj}" --cmd "${train_cmd}" \
