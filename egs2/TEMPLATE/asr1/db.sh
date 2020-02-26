@@ -1,5 +1,6 @@
 if [[ "$(hostname -d)" == clsp.jhu.edu ]]; then
     AISHELL=
+    AN4=
     WSJ0=
     WSJ1=
     WSJCAM0=
@@ -26,14 +27,15 @@ if [[ "$(hostname -d)" == clsp.jhu.edu ]]; then
     YESNO=
 
 else
-    AISHELL=
+    AISHELL=downloads
+    AN4=downloads
     WSJ0=
     WSJ1=
     WSJCAM0=
     REVERB=
     CHIME3=
     CHIME4=
-    CSJDATATOP=
+    CSJDATATOP=/data/rigel1/corpora/CSJ
     CSJVER=dvd  ## Set your CSJ format (dvd or usb).
                 ## Usage    :
                 ## Case DVD : We assume CSJ DVDs are copied in this directory with the names dvd1, dvd2,...,dvd17.
