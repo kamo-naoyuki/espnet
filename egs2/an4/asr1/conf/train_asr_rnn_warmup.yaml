@@ -1,0 +1,13 @@
+init: chainer
+max_epoch: 200
+batch_size: 10
+
+encoder: rnn
+decoder: rnn
+
+optim: adam
+optim_conf:
+    lr: 0.01
+scheduler: warmuplr
+scheduler_conf:
+    warmup_steps: 5000

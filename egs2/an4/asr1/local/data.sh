@@ -14,8 +14,6 @@ SECONDS=0
 stage=1
 stop_stage=100
 
-datadir=./downloads
-an4_root=${datadir}/an4
 data_url=http://www.speech.cs.cmu.edu/databases/an4/
 ndev_utt=100
 
@@ -29,6 +27,10 @@ fi
 
 . ./path.sh
 . ./cmd.sh
+. ./db.sh
+
+datadir="${AN4}"
+an4_root=${datadir}/an4
 
 train_set="train_nodev"
 train_dev="train_dev"
