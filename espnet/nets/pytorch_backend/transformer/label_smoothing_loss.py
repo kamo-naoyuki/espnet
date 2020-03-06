@@ -58,6 +58,9 @@ class LabelSmoothingLoss(nn.Module):
 
         if self.perturb:
             kl = kl.view(batch_size, -1, self.size)
-            kl *= np.random.gamma(4, 0.25, (batch_size, 1, 1))
+            kl *= torch.tensor(
+                np.random.gamma(4, 0.25, (batch_size, 1, 1)),
+                device=kl.device, dtype=kl.dtype
+            )
             kl = kl.view(-1, self.size)
         return kl.masked_fill(ignore.unsqueeze(1), 0).sum() / denom
