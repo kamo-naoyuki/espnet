@@ -43,6 +43,7 @@ class ASRE2E(AbsE2E):
         report_wer: bool = True,
         sym_space: str = "<space>",
         sym_blank: str = "<blank>",
+        perturb: bool = False,
     ):
         assert check_argument_types()
         assert 0.0 <= ctc_weight <= 1.0, ctc_weight
@@ -71,6 +72,7 @@ class ASRE2E(AbsE2E):
             padding_idx=ignore_id,
             smoothing=lsm_weight,
             normalize_length=length_normalized_loss,
+            perturb=perturb,
         )
 
         if report_cer or report_wer:

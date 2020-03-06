@@ -8,6 +8,7 @@
 
 import torch
 from torch import nn
+import numpy as np
 
 
 class LabelSmoothingLoss(nn.Module):
@@ -20,7 +21,8 @@ class LabelSmoothingLoss(nn.Module):
     :param torch.nn.Module criterion: loss function to be smoothed
     """
 
-    def __init__(self, size, padding_idx, smoothing, normalize_length=False, criterion=nn.KLDivLoss(reduction="none")):
+    def __init__(self, size, padding_idx, smoothing, normalize_length=False, criterion=nn.KLDivLoss(reduction="none"),
+                 perturb: bool = False):
         """Construct an LabelSmoothingLoss object."""
         super(LabelSmoothingLoss, self).__init__()
         self.criterion = criterion
@@ -30,6 +32,7 @@ class LabelSmoothingLoss(nn.Module):
         self.size = size
         self.true_dist = None
         self.normalize_length = normalize_length
+        self.perturb = perturb
 
     def forward(self, x, target):
         """Compute loss between x and target.
@@ -52,4 +55,9 @@ class LabelSmoothingLoss(nn.Module):
             true_dist.scatter_(1, target.unsqueeze(1), self.confidence)
         kl = self.criterion(torch.log_softmax(x, dim=1), true_dist)
         denom = total if self.normalize_length else batch_size
+
+        if self.perturb:
+            kl = kl.view(batch_size, -1, self.size)
+            kl *= np.random.gamma(4, 0.25, (batch_size, 1, 1))
+            kl = kl.view(-1, self.size)
         return kl.masked_fill(ignore.unsqueeze(1), 0).sum() / denom
