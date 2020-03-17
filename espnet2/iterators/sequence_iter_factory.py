@@ -30,7 +30,6 @@ class SequenceIterFactory(AbsIterFactory):
         num_workers: int = 0,
         collate_fn=None,
         pin_memory: bool = False,
-        distributed: bool = False,
     ):
         assert check_argument_types()
 
@@ -46,7 +45,6 @@ class SequenceIterFactory(AbsIterFactory):
         self.collate_fn = collate_fn
         # https://discuss.pytorch.org/t/what-is-the-disadvantage-of-using-pin-memory/1702
         self.pin_memory = pin_memory
-        self.distributed = distributed
 
     def build_iter(self, epoch: int, shuffle: bool = None) -> DataLoader:
         if shuffle is None:
@@ -81,17 +79,6 @@ class SequenceIterFactory(AbsIterFactory):
             batches = list(self.batches)
             if shuffle:
                 np.random.RandomState(epoch + self.seed).shuffle(batches)
-
-        if self.distributed:
-            world_size = torch.distributed.get_world_size()
-            rank = torch.distributed.get_rank()
-            for batch in batches:
-                if len(batch) < world_size:
-                    raise RuntimeError(
-                        f"The batch-size must be equal or more than world_size: "
-                        f"{len(batch)} < {world_size}"
-                    )
-            batches = [batch[rank::world_size] for batch in batches]
 
         # For backward compatibility for pytorch DataLoader
         if self.collate_fn is not None:
