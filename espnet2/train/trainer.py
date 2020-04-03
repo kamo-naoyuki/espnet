@@ -1,10 +1,10 @@
 import argparse
 import dataclasses
-from dataclasses import is_dataclass
 from distutils.version import LooseVersion
 import logging
 from pathlib import Path
 import time
+from typing import Any
 from typing import Dict
 from typing import Iterable
 from typing import List
@@ -60,29 +60,36 @@ class Trainer:
     """Trainer having a optimizer.
 
     If you'd like to use multiple optimizers, then inherit this class
-    and override the methods if necessary - at least "train_one_epoch()"
+    and override train_step().
 
-    >>> class TwoOptimizerTrainer(Trainer):
-    ...     num_optimizers: int = 1
+    >>> class Task(AbsTask):
+    ...     num_optimizers: int = 2
+    ...     trainer = MyTrainer
     ...
     ...     @classmethod
-    ...     def add_arguments(cls, parser):
-    ...         ...
+    ...     def build_optimizers(cls, args, model):
+    ...         optim_class = optim_classes.get(args.optim)
+    ...         if optim_class is None:
+    ...             raise ValueError(f"must be one of {list(optim_classes)}: {args.optim}")
+    ...         optim = optim_class(model.foo.parameters(), **args.optim_conf)
     ...
+    ...         optim_class2 = optim_classes.get(args.optim2)
+    ...         if optim_class2 is None:
+    ...             raise ValueError(f"must be one of {list(optim_classes)}: {args.optim2}")
+    ...         optim2 = optim_class2(model.bar.parameters(), **args.optim2_conf)
+    ...         return [optim, optim2]
+    >>> class MyTrainer(Trainer):
     ...     @classmethod
-    ...     def train_one_epoch(cls, model, optimizers, ...):
-    ...         loss1 = model.model1(...)
-    ...         loss1.backward()
-    ...         optimizers[0].step()
-    ...
-    ...         loss2 = model.model2(...)
-    ...         loss2.backward()
-    ...         optimizers[1].step()
+    ...     def train_step(cls, options, optim_idx, model, batch, train_states):
+    ...         if optim_idx == 0:
+    ...             batch_0 = {"foo": batch["foo"]}
+    ...             loss, stats, weight = model(**batch_0)
+    ...         elif optim_idx == 1:
+    ...             batch_1 = {"bar": batch["bar"]}
+    ...             loss, stats, weight = model(**batch_1)
+    ...         return loss, stats, weight, train_states
 
     """
-
-    # If you need more than one optimizers, change this value in inheritance
-    num_optimizers: int = 1
 
     def __init__(self):
         raise RuntimeError("This class can't be instantiated.")
@@ -116,21 +123,12 @@ class Trainer:
         early_stopping_criterion: Sequence[str],
         best_model_criterion: Sequence[Sequence[str]],
         val_scheduler_criterion: Sequence[str],
-        trainer_options,
+        trainer_options: TrainerOptions,
         distributed_option: DistributedOption,
     ) -> None:
         """Perform training. This method performs the main process of training."""
         assert check_argument_types()
-        # NOTE(kamo): Don't check the type more strictly as far trainer_options
-        assert is_dataclass(trainer_options), type(trainer_options)
-
-        # NOTE(kamo): trainer_options doesn't always have "train_dtype"
-        use_apex = getattr(trainer_options, "train_dtype", "") in (
-            "O0",
-            "O1",
-            "O2",
-            "O3",
-        )
+        use_apex = trainer_options.train_dtype in ("O0", "O1", "O2", "O3")
         if use_apex:
             try:
                 from apex import amp
@@ -201,20 +199,20 @@ class Trainer:
             # 1. Train and validation for one-epoch
             with reporter.observe("train") as sub_reporter:
                 all_steps_are_invalid = cls.train_one_epoch(
+                    options=trainer_options,
                     model=dp_model,
                     optimizers=optimizers,
                     schedulers=schedulers,
                     iterator=train_iter_factory.build_iter(iepoch),
                     reporter=sub_reporter,
-                    options=trainer_options,
                 )
 
             with reporter.observe("valid") as sub_reporter:
                 cls.validate_one_epoch(
+                    options=trainer_options,
                     model=dp_model,
                     iterator=valid_iter_factory.build_iter(iepoch),
                     reporter=sub_reporter,
-                    options=trainer_options,
                 )
 
             if not distributed_option.distributed or distributed_option.dist_rank == 0:
@@ -222,12 +220,12 @@ class Trainer:
                 if plot_attention_iter_factory is not None:
                     with reporter.observe("att_plot") as sub_reporter:
                         cls.plot_attention(
+                            options=trainer_options,
                             model=model,
                             output_dir=output_dir / "att_ws",
                             summary_writer=summary_writer,
                             iterator=plot_attention_iter_factory.build_iter(iepoch),
                             reporter=sub_reporter,
-                            options=trainer_options,
                         )
 
             # 2. LR Scheduler step
@@ -327,12 +325,6 @@ class Trainer:
     ) -> bool:
         assert check_argument_types()
 
-        # Note(kamo): assumes one optimizer
-        assert cls.num_optimizers == 1, cls.num_optimizers
-        assert len(optimizers) == 1, len(optimizers)
-        optimizer = optimizers[0]
-        scheduler = schedulers[0]
-
         grad_noise = options.grad_noise
         accum_grad = options.accum_grad
         grad_clip = options.grad_clip
@@ -355,6 +347,8 @@ class Trainer:
         iterator_stop = torch.tensor(0).to("cuda" if ngpu > 0 else "cpu")
 
         start_time = time.perf_counter()
+        train_states = None
+
         for iiter, (_, batch) in enumerate(
             reporter.measure_iter_time(iterator, "iter_time"), 1
         ):
@@ -364,89 +358,91 @@ class Trainer:
                 torch.distributed.all_reduce(iterator_stop, ReduceOp.SUM)
                 if iterator_stop > 0:
                     break
+            reporter.increment()
 
             batch = to_device(batch, "cuda" if ngpu > 0 else "cpu")
             if no_forward_run:
                 all_steps_are_invalid = False
-                reporter.register({})
                 continue
 
-            with reporter.measure_time("forward_time"):
-                loss, stats, weight = model(**batch)
-            if ngpu > 1 or distributed:
-                # Apply weighted averaging for loss and stats
-                loss = (loss * weight.type(loss.dtype)).sum()
+            for optim_idx, (optimizer, scheduler) in enumerate(
+                zip(optimizers, schedulers)
+            ):
+                with reporter.measure_time(f"forward{optim_idx}_time"):
+                    loss, stats, weight, train_states = cls.train_step(
+                        options, optim_idx, model, batch, train_states,
+                    )
+                if ngpu > 1 or distributed:
+                    # Apply weighted averaging for loss and stats
+                    loss = (loss * weight.type(loss.dtype)).sum()
 
-                # if distributed, this method can also apply all_reduce()
-                stats, weight = recursive_average(stats, weight, distributed)
+                    # if distributed, this method can also apply all_reduce()
+                    stats, weight = recursive_average(stats, weight, distributed)
 
-                # Now weight is summation over all workers
-                loss /= weight
-            if distributed:
-                # NOTE(kamo): Multiply world_size because DistributedDataParallel
-                # automatically normalizes the gradient by world_size.
-                loss *= torch.distributed.get_world_size()
+                    # Now weight is summation over all workers
+                    loss /= weight
+                if distributed:
+                    # NOTE(kamo): Multiply world_size because DistributedDataParallel
+                    # automatically normalizes the gradient by world_size.
+                    loss *= torch.distributed.get_world_size()
 
-            reporter.register(stats, weight)
+                reporter.register(stats, weight)
 
-            loss /= accum_grad
-            with reporter.measure_time("backward_time"):
-                if use_apex:
-                    try:
-                        from apex import amp
-                    except ImportError:
-                        logging.error(
-                            f"You need to install apex. "
-                            f"See https://github.com/NVIDIA/apex#linux"
+                loss /= accum_grad
+                with reporter.measure_time(f"backward{optim_idx}_time"):
+                    if use_apex:
+                        try:
+                            from apex import amp
+                        except ImportError:
+                            logging.error(
+                                f"You need to install apex. "
+                                f"See https://github.com/NVIDIA/apex#linux"
+                            )
+
+                        with amp.scale_loss(loss, optimizers) as scaled_loss:
+                            scaled_loss.backward()
+                    else:
+                        loss.backward()
+
+                if iiter % accum_grad == 0:
+                    # gradient noise injection
+                    if grad_noise:
+                        add_gradient_noise(
+                            model,
+                            reporter.get_total_count(),
+                            duration=100,
+                            eta=1.0,
+                            scale_factor=0.55,
                         )
 
-                    with amp.scale_loss(loss, optimizers) as scaled_loss:
-                        scaled_loss.backward()
-                else:
-                    loss.backward()
-
-            if iiter % accum_grad == 0:
-                # gradient noise injection
-                if grad_noise:
-                    add_gradient_noise(
-                        model,
-                        reporter.get_total_count(),
-                        duration=100,
-                        eta=1.0,
-                        scale_factor=0.55,
+                    # compute the gradient norm to check if it is normal or not
+                    grad_norm = torch.nn.utils.clip_grad_norm_(
+                        model.parameters(), grad_clip
                     )
 
-                # compute the gradient norm to check if it is normal or not
-                grad_norm = torch.nn.utils.clip_grad_norm_(
-                    model.parameters(), grad_clip
-                )
+                    if not np.isfinite(grad_norm):
+                        logging.warning(
+                            f"The grad norm is {grad_norm}. Skipping updating the model."
+                        )
+                    else:
+                        all_steps_are_invalid = False
+                        with reporter.measure_time(f"optim{optim_idx}_step_time"):
+                            optimizer.step()
+                        if isinstance(scheduler, AbsBatchStepScheduler):
+                            scheduler.step()
+                    optimizer.zero_grad()
 
-                if not np.isfinite(grad_norm):
-                    logging.warning(
-                        f"The grad norm is {grad_norm}. Skipping updating the model."
-                    )
-                else:
-                    all_steps_are_invalid = False
-                    with reporter.measure_time("optim_step_time"):
-                        optimizer.step()
-                    if isinstance(scheduler, AbsBatchStepScheduler):
-                        scheduler.step()
-                optimizer.zero_grad()
-
-                # Register lr and train/load time[sec/step],
-                # where step refers to accum_grad * mini-batch
-                reporter.register(
-                    dict(
+                    # Register lr
+                    reporter.register(
                         {
-                            f"lr_{i}": pg["lr"]
+                            f"optim{optim_idx}_lr_{i}": pg["lr"]
                             for i, pg in enumerate(optimizer.param_groups)
                             if "lr" in pg
                         },
-                        train_time=time.perf_counter() - start_time,
-                    ),
-                    # Suppress to increment the internal counter.
-                    not_increment_count=True,
-                )
+                    )
+
+            if iiter % accum_grad == 0:
+                reporter.register(dict(train_time=time.perf_counter() - start_time),)
                 start_time = time.perf_counter()
 
             if iiter % log_interval == 0:
@@ -460,13 +456,25 @@ class Trainer:
         return all_steps_are_invalid
 
     @classmethod
+    def train_step(
+        cls,
+        options: TrainerOptions,
+        optim_idx: int,
+        model: torch.nn.Module,
+        batch: dict,
+        train_states: Any,
+    ):
+        loss, stats, weight = model(**batch)
+        return loss, stats, weight, train_states
+
+    @classmethod
     @torch.no_grad()
     def validate_one_epoch(
         cls,
+        options: TrainerOptions,
         model: torch.nn.Module,
         iterator: Iterable[Dict[str, torch.Tensor]],
         reporter: SubReporter,
-        options: TrainerOptions,
     ) -> None:
         assert check_argument_types()
         ngpu = options.ngpu
@@ -484,13 +492,13 @@ class Trainer:
                 torch.distributed.all_reduce(iterator_stop, ReduceOp.SUM)
                 if iterator_stop > 0:
                     break
+            reporter.increment()
 
             batch = to_device(batch, "cuda" if ngpu > 0 else "cpu")
             if no_forward_run:
-                reporter.register({})
                 continue
 
-            _, stats, weight = model(**batch)
+            _, stats, weight = cls.validate_step(options, model, batch)
             if ngpu > 1 or distributed:
                 # Apply weighted averaging for stats.
                 # if distributed, this method can also apply all_reduce()
@@ -504,15 +512,21 @@ class Trainer:
                 torch.distributed.all_reduce(iterator_stop, ReduceOp.SUM)
 
     @classmethod
+    def validate_step(
+        cls, options: TrainerOptions, model: torch.nn.Module, batch: dict
+    ):
+        return model(**batch)
+
+    @classmethod
     @torch.no_grad()
     def plot_attention(
         cls,
+        options: TrainerOptions,
         model: torch.nn.Module,
         output_dir: Optional[Path],
         summary_writer: Optional[SummaryWriter],
         iterator: Iterable[Tuple[List[str], Dict[str, torch.Tensor]]],
         reporter: SubReporter,
-        options: TrainerOptions,
     ) -> None:
         assert check_argument_types()
         import matplotlib
@@ -537,12 +551,13 @@ class Trainer:
 
             # 1. Forwarding model and gathering all attentions
             #    calculate_all_attentions() uses single gpu only.
-            att_dict = calculate_all_attentions(model, batch)
+            att_dict = cls.plot_attention_step(options, model, batch)
 
             # 2. Plot attentions: This part is slow due to matplotlib
             for k, att_list in att_dict.items():
                 assert len(att_list) == len(ids), (len(att_list), len(ids))
                 for id_, att_w in zip(ids, att_list):
+                    reporter.increment()
 
                     if isinstance(att_w, torch.Tensor):
                         att_w = att_w.detach().cpu().numpy()
@@ -576,5 +591,8 @@ class Trainer:
                             f"{k}_{id_}", fig, reporter.get_epoch()
                         )
 
-                    # Dummy register() stimulates to increment the counter
-                    reporter.register({})
+    @classmethod
+    def plot_attention_step(
+        cls, options: TrainerOptions, model: torch.nn.Module, batch: dict,
+    ):
+        return calculate_all_attentions(model, batch)

@@ -34,7 +34,7 @@ class CommonCollateFn:
 
     def __call__(
         self, data: Collection[Tuple[str, Dict[str, np.ndarray]]]
-    ) -> Tuple[List[str], Dict[str, torch.Tensor]]:
+    ) -> Tuple[List[Union[str, int]], Dict[str, torch.Tensor]]:
         return common_collate_fn(
             data,
             float_pad_value=self.float_pad_value,
@@ -48,7 +48,7 @@ def common_collate_fn(
     float_pad_value: Union[float, int] = 0.0,
     int_pad_value: int = -32768,
     not_sequence: Collection[str] = (),
-) -> Tuple[List[str], Dict[str, torch.Tensor]]:
+) -> Tuple[List[Union[str, int]], Dict[str, torch.Tensor]]:
     """Concatenate ndarray-list to an array and convert to torch.Tensor.
 
     Examples:

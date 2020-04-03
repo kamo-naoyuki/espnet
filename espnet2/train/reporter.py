@@ -136,18 +136,18 @@ class SubReporter:
     def get_epoch(self) -> int:
         return self.epoch
 
+    def increment(self) -> None:
+        self.total_count += 1
+        self.count += 1
+
     def register(
         self,
         stats: Dict[str, Optional[Union[Num, Dict[str, Num]]]],
         weight: Num = None,
-        not_increment_count: bool = False,
     ) -> None:
         assert check_argument_types()
         if self._finished:
             raise RuntimeError("Already finished")
-        if not not_increment_count:
-            self.total_count += 1
-            self.count += 1
 
         for key2, v in stats.items():
             if key2 in _reserved:
@@ -198,7 +198,7 @@ class SubReporter:
         start = time.perf_counter()
         yield start
         t = time.perf_counter() - start
-        self.register({name: t}, not_increment_count=True)
+        self.register({name: t})
 
     def measure_iter_time(self, iterable, name: str):
         iterator = iter(iterable)
@@ -207,7 +207,7 @@ class SubReporter:
                 start = time.perf_counter()
                 retval = next(iterator)
                 t = time.perf_counter() - start
-                self.register({name: t}, not_increment_count=True)
+                self.register({name: t})
                 yield retval
             except StopIteration:
                 break

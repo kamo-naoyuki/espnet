@@ -801,11 +801,6 @@ class AbsTask(ABC):
 
     @classmethod
     def main(cls, args: argparse.Namespace = None, cmd: Sequence[str] = None):
-        if cls.num_optimizers != cls.trainer.num_optimizers:
-            raise RuntimeError(
-                f"Task.num_optimizers != Task.trainer.num_optimizers: "
-                f"{cls.num_optimizers} != {cls.trainer.num_optimizers}"
-            )
         assert check_argument_types()
         print(get_commandline_args(), file=sys.stderr)
         if args is None:
@@ -998,6 +993,10 @@ class AbsTask(ABC):
 
         # 4. Build optimizer
         optimizers = cls.build_optimizers(args, model=model)
+        if len(optimizers) != cls.num_optimizers:
+            raise RuntimeError(
+                f"build_optimizer() must build {cls.num_optimizers} optimizers"
+            )
 
         # For apex support
         use_apex = args.train_dtype in ("O0", "O1", "O2", "O3")
@@ -1278,16 +1277,22 @@ class AbsTask(ABC):
         )
         cls.check_task_requirements(dataset, allow_variable_data_keys)
 
-        batch_sampler = build_batch_sampler(
-            type=batch_type,
-            shape_files=shape_files,
-            fold_lengths=fold_length,
-            batch_size=batch_size,
-            sort_in_batch=sort_in_batch,
-            sort_batch=sort_batch,
-            drop_last=False,
-            min_batch_size=torch.distributed.get_world_size() if distributed else 1,
-        )
+        if len(shape_files) == 0:
+            sampler = torch.utils.data.sampler.SequentialSampler(dataset)
+            batch_sampler = torch.utils.data.sampler.BatchSampler(
+                sampler, batch_size, drop_last=True,
+            )
+        else:
+            batch_sampler = build_batch_sampler(
+                type=batch_type,
+                shape_files=shape_files,
+                fold_lengths=fold_length,
+                batch_size=batch_size,
+                sort_in_batch=sort_in_batch,
+                sort_batch=sort_batch,
+                drop_last=False,
+                min_batch_size=torch.distributed.get_world_size() if distributed else 1,
+            )
 
         batches = list(batch_sampler)
         if num_batches is not None:
@@ -1483,8 +1488,15 @@ class AbsTask(ABC):
         cls.check_task_requirements(dataset, allow_variable_data_keys, inference)
 
         if key_file is None:
-            key_file, _, _ = data_path_and_name_and_type[0]
-        batch_sampler = ConstantBatchSampler(batch_size=batch_size, key_file=key_file)
+            sampler = torch.utils.data.sampler.SequentialSampler(dataset)
+            batch_sampler = torch.utils.data.sampler.BatchSampler(
+                sampler, batch_size, drop_last=False,
+            )
+
+        else:
+            batch_sampler = ConstantBatchSampler(
+                batch_size=batch_size, key_file=key_file
+            )
 
         logging.info(f"dataset:\n{dataset}")
         logging.info(f"Batch sampler: {batch_sampler}")
