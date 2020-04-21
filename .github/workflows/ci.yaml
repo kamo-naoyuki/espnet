@@ -30,6 +30,8 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           architecture: 'x64'
+      - name: df
+        run: df
       - name: install dependencies
         run: |
           sudo apt-get update -qq
