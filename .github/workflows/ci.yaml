@@ -61,3 +61,5 @@ jobs:
       - name: test integration
         run: |
           ./ci/test_integration.sh
+      - name: df2
+        run: df
