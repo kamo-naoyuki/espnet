@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # test asr recipe
+df
 cwd=$(pwd)
 cd ./egs/mini_an4/asr1 || exit 1
 . path.sh  # source here to avoid undefined variable errors
