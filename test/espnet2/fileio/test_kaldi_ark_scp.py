@@ -45,9 +45,10 @@ def test_hdf5_KaldiScpReader(tmp_path: Path, ark_scp):
     desired = {"abc": array1, "def": array2}
 
     f = h5py.File(tmp_path / "dummy.h5")
+    g = f.create_group("0")
     target = KaldiScpReader(scp_path1)
-    f["abc"] = target.get_path("abc")
-    f["def"] = target.get_path("def")
+    g["abc"] = target.get_path("abc")
+    g["def"] = target.get_path("def")
     target = KaldiScpReader(f)
 
     for k in desired:

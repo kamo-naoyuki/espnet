@@ -1,4 +1,5 @@
 import collections
+import itertools
 from pathlib import Path
 from typing import Union
 
@@ -16,21 +17,45 @@ def is_hdf5_corpus_format(file: Union[str, Path]) -> bool:
     The HDF5 must have the following structure e.g.:
       - speech/type="sound"
       - speech/data
-          - id1="/some/where/a.wav"
-          - id2="/some/where/b.wav"
+          - group0/
+              - id1="/some/where/a.wav"
+              - id2="/some/where/b.wav"
+              - ...
+          - group1/
+              - id100="/some/where/foo.wav"
+              - id101="/some/where/bar.wav"
+              - ...
           - ...
       - text/type="direct"
       - text/data
-          - id1="abc def"
-          - id2="hello world"
+          - group0/
+              - id1="abc def"
+              - id2="hello world"
+              - ...
+          - group1/
+              - id100="foo bar"
+              - id101="aaa bbb"
+              - ...
           - ...
       - shape_files/0
-          - id1=(10000,)
-          - id2=(14000,)
+          - group0/
+              - id1=(10000,)
+              - id2=(14000,)
+              - ...
+          - group1/
+              - id100=(10000,)
+              - id101=(14000,)
+              - ...
           - ...
       - shape_files/1
-          - id1=(2,)
-          - id2=(2,)
+          - group0/
+              - id1=(2,)
+              - id2=(2,)
+              - ...
+          - group1/
+              - id100=(2,)
+              - id101=(2,)
+              - ...
           - ...
     """
     with h5py.File(file, "r") as f:
@@ -51,16 +76,24 @@ class H5FileWrapper(collections.abc.Mapping):
         return repr(self.file)
 
     def __getitem__(self, item):
-        return self.file[item][()]
+        for g in self.file.values():
+            if item in g:
+                return g[item][()]
+        else:
+            raise KeyError(item)
 
     def __len__(self) -> int:
-        return len(self.file)
+        return sum(len(g) for g in self.file.values())
 
     def __iter__(self):
-        return iter(self.file)
+        return itertools.chain(*self.file.values())
 
     def __contains__(self, item) -> bool:
-        return item in self.file
+        for g in self.file.values():
+            if item in g:
+                return True
+        else:
+            return False
 
     def keys(self):
-        return self.file.keys()
+        return list(itertools.chain(*(g.keys() for g in self.file.values())))

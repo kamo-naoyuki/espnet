@@ -101,8 +101,9 @@ def test_hdf5_SoundScpReader(tmp_path: Path):
     soundfile.write(audio_path2, audio2, 16)
 
     p = h5py.File(tmp_path / "dummy.h5")
-    p["abc"] = str(audio_path1)
-    p["def"] = str(audio_path2)
+    g = p.create_group("0")
+    g["abc"] = str(audio_path1)
+    g["def"] = str(audio_path2)
 
     desired = {"abc": (16, audio1), "def": (16, audio2)}
     target = SoundScpReader(p, normalize=False, dtype=np.int16)

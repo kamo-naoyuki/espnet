@@ -63,8 +63,9 @@ def test_hdf5_NpyScpReader(tmp_path: Path):
     np.save(npy_path2, array2)
 
     f = h5py.File(tmp_path / "dummy.h5")
-    f["abc"] = str(npy_path1)
-    f["def"] = str(npy_path2)
+    g = f.create_group("0")
+    g["abc"] = str(npy_path1)
+    g["def"] = str(npy_path2)
 
     desired = {"abc": array1, "def": array2}
     target = NpyScpReader(f)
