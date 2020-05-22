@@ -21,12 +21,12 @@ from torch.utils.data.dataset import Dataset
 from typeguard import check_argument_types
 from typeguard import check_return_type
 
-from espnet2.utils.fileio import load_num_sequence_text
-from espnet2.utils.fileio import NpyScpReader
-from espnet2.utils.fileio import read_2column_text
-from espnet2.utils.fileio import SoundScpReader
-from espnet2.utils.rand_gen_dataset import FloatRandomGenerateDataset
-from espnet2.utils.rand_gen_dataset import IntRandomGenerateDataset
+from espnet2.fileio.npy_scp import NpyScpReader
+from espnet2.fileio.rand_gen_dataset import FloatRandomGenerateDataset
+from espnet2.fileio.rand_gen_dataset import IntRandomGenerateDataset
+from espnet2.fileio.read_text import load_num_sequence_text
+from espnet2.fileio.read_text import read_2column_text
+from espnet2.fileio.sound_scp import SoundScpReader
 from espnet2.utils.sized_dict import SizedDict
 
 
@@ -433,7 +433,7 @@ class ESPnetDataset(Dataset):
 
     def __repr__(self):
         _mes = self.__class__.__name__
-        _mes += f"("
+        _mes += "("
         for name, (path, _type) in self.debug_info.items():
             _mes += f'\n  {name}: {{"path": "{path}", "type": "{_type}"}}'
         _mes += f"\n  preprocess: {self.preprocess})"

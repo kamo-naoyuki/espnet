@@ -56,6 +56,7 @@ from espnet2.train.reporter import Reporter
 from espnet2.train.trainer import Trainer
 from espnet2.utils.build_dataclass import build_dataclass
 from espnet2.utils.get_default_kwargs import get_default_kwargs
+from espnet2.utils.model_summary import model_summary
 from espnet2.utils.nested_dict_action import NestedDictAction
 from espnet2.utils.types import humanfriendly_parse_size_or_none
 from espnet2.utils.types import int_or_none
@@ -652,26 +653,26 @@ class AbsTask(ABC):
                 type=lambda x: x.lower(),
                 default="adadelta",
                 choices=list(optim_classes),
-                help=f"The optimizer type",
+                help="The optimizer type",
             )
             group.add_argument(
                 f"--optim{suf}_conf",
                 action=NestedDictAction,
                 default=dict(),
-                help=f"The keyword arguments for optimizer",
+                help="The keyword arguments for optimizer",
             )
             group.add_argument(
                 f"--scheduler{suf}",
                 type=lambda x: str_or_none(x.lower()),
                 default=None,
                 choices=list(scheduler_classes) + [None],
-                help=f"The lr scheduler type",
+                help="The lr scheduler type",
             )
             group.add_argument(
                 f"--scheduler{suf}_conf",
                 action=NestedDictAction,
                 default=dict(),
-                help=f"The keyword arguments for lr scheduler",
+                help="The keyword arguments for lr scheduler",
             )
 
         cls.trainer.add_arguments(parser)
@@ -1031,8 +1032,8 @@ class AbsTask(ABC):
                 from apex import amp
             except ImportError:
                 logging.error(
-                    f"You need to install apex. "
-                    f"See https://github.com/NVIDIA/apex#linux"
+                    "You need to install apex. "
+                    "See https://github.com/NVIDIA/apex#linux"
                 )
                 raise
             model, optimizers = amp.initialize(
@@ -1058,7 +1059,7 @@ class AbsTask(ABC):
             schedulers.append(scheduler)
 
         logging.info(pytorch_cudnn_version())
-        logging.info(f"Model:\n{model}")
+        logging.info(model_summary(model))
         for i, (o, s) in enumerate(zip(optimizers, schedulers), 1):
             suf = "" if i == 1 else str(i)
             logging.info(f"Optimizer{suf}:\n{o}")
@@ -1110,8 +1111,8 @@ class AbsTask(ABC):
                     from apex import amp
                 except ImportError:
                     logging.error(
-                        f"You need to install apex. "
-                        f"See https://github.com/NVIDIA/apex#linux"
+                        "You need to install apex. "
+                        "See https://github.com/NVIDIA/apex#linux"
                     )
                 amp.load_state_dict(states["amp"])
 

@@ -432,6 +432,11 @@ def train(args):
         )
     assert isinstance(model, ASRInterface)
 
+    logging.info(
+        " Total parameter of the model = "
+        + str(sum(p.numel() for p in model.parameters()))
+    )
+
     if args.rnnlm is not None:
         rnnlm_args = get_model_conf(args.rnnlm, args.rnnlm_conf)
         rnnlm = lm_pytorch.ClassifierWithState(
@@ -834,6 +839,10 @@ def recog(args):
 
     if args.streaming_mode and "transformer" in train_args.model_module:
         raise NotImplementedError("streaming mode for transformer is not implemented")
+    logging.info(
+        " Total parameter of the model = "
+        + str(sum(p.numel() for p in model.parameters()))
+    )
 
     # read rnnlm
     if args.rnnlm:
@@ -1096,7 +1105,7 @@ def enhance(args):
         else args.preprocess_conf
     )
     if preprocess_conf is not None:
-        logging.info("Use preprocessing".format(preprocess_conf))
+        logging.info(f"Use preprocessing: {preprocess_conf}")
         transform = Transformation(preprocess_conf)
     else:
         transform = None
