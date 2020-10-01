@@ -241,6 +241,11 @@ class ESPnetMyModel(AbsESPnetModel):
         """
         assert speech.size(0) == label.size(0), (speech.shape, label.shape)
         assert label.dtype == torch.long, label.dtype
+        if label.dim() == 2 and label.size(1) == 1:
+            label = label.squeeze(1)
+        elif label.dim() != 1:
+            raise ValueError(f"Must be 2 dim tensor: {label.size()}")
+
         label = label.bool()
 
         # The first iteration
@@ -294,6 +299,7 @@ class ESPnetMyModel(AbsESPnetModel):
                 + loss2_iden
                 + loss2_hidden_clean
             )
+        stats.update(loss=loss)
 
         batch_size = speech.size(0)
         # force_gatherable: to-device and to-tensor if scalar for DataParallel

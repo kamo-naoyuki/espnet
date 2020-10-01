@@ -88,7 +88,7 @@ class MyTask(AbsTask):
         Tuple[List[str], Dict[str, torch.Tensor]],
     ]:
         assert check_argument_types()
-        return CommonCollateFn(int_pad_value=0)
+        return CommonCollateFn(int_pad_value=0, not_sequence=["label"])
 
     @classmethod
     def build_preprocess_fn(
