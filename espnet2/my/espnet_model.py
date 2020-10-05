@@ -316,6 +316,13 @@ class ESPnetMyModel(AbsESPnetModel):
         loss, stats, weight = force_gatherable((loss, stats, batch_size), loss.device)
         return loss, stats, weight
 
+    def inference(self, speech: torch.Tensor):
+        h_clean, h_noise = self._encode(speech)
+        h_noisy = self.combiner(h_clean, h_noise)
+        decode_clean = self._decode(h_clean)
+        decode_noisy = self._decode(h_noisy)
+        return decode_clean,  decode_noisy
+
     def collect_feats(
         self,
     ) -> Dict[str, torch.Tensor]:
