@@ -256,48 +256,58 @@ class ESPnetMyModel(AbsESPnetModel):
 
         loss_classify = self.classify_criterion(h_noise, label)
         loss_noisy = self.reconstruct_criterion(decode_noisy, speech)
-        loss_clean = self.reconstruct_criterion(decode_clean[~label], speech[~label])
-        loss_iden = self.identity_criterion(h_noise[~label])
+        loss = loss_classify + loss_noisy
 
         stats = dict(
             loss_classify=loss_classify.detach(),
             dsr_noisy=loss_noisy.detach(),
-            dsr_clean=loss_clean.detach(),
-            loss_iden=loss_iden.detach(),
         )
-        weight_clean = (~label).sum().float() / len(speech)
-        loss = loss_classify + loss_noisy + weight_clean * (loss_clean + loss_iden)
+
+        if (~label).sum() != 0:
+            loss_clean = self.reconstruct_criterion(decode_clean[~label], speech[~label])
+            loss_iden = self.identity_criterion(h_noise[~label])
+
+            weight_clean = (~label).sum().float() / len(speech)
+            loss += weight_clean * (loss_clean + loss_iden)
+            stats.update(
+                dsr_clean=loss_clean.detach(),
+                loss_iden=loss_iden.detach(),
+            )
 
         # The second iteration
-        if label.sum() != 0:
+        if label.sum() != 0 and loss_noisy < 0:
             speech2 = decode_clean[label]
             label2 = label[label]
 
             h2_clean, h2_noise = self._encode(speech2)
             h2_noisy = self.combiner(h2_clean, h2_noise)
+            h1_2_noisy = self.combiner(h2_clean, h_noise[label])
             decode2_clean = self._decode(h2_clean)
             decode2_noisy = self._decode(h2_noisy)
+            decode1_2_noisy = self._decode(h1_2_noisy)
 
             loss2_classify = self.classify_criterion(h2_noise, label2)
             loss2_clean = self.reconstruct_criterion(decode2_clean, speech2)
             loss2_noisy = self.reconstruct_criterion(decode2_noisy, speech2)
+            loss1_2_noisy = self.reconstruct_criterion(decode1_2_noisy, speech[label])
             loss2_iden = self.identity_criterion(h2_noise)
-            loss2_hidden_clean = self.nmse_criterion(h2_clean, h_clean[label])
+            # loss2_hidden_clean = self.nmse_criterion(h2_clean, h_clean[label])
+
+            weight_noisy = label.sum().float() / len(speech)
+            loss += weight_noisy * (
+                loss2_classify
+                + 0.1 * loss2_clean
+                + 0.1 * loss2_noisy
+                + loss1_2_noisy
+                + loss2_iden
+            )
 
             stats.update(
                 loss2_classify=loss2_classify.detach(),
-                dsr2_noisy=loss2_noisy.detach(),
                 dsr2_clean=loss2_clean.detach(),
+                dsr2_noisy=loss2_noisy.detach(),
+                dsr1_2_noisy=loss1_2_noisy.detach(),
                 loss2_iden=loss2_iden.detach(),
-                loss2_hiden_clean=loss2_hidden_clean.detach(),
-            )
-            weight_noisy = 1 - weight_clean
-            loss += weight_noisy * (
-                loss2_classify
-                + loss2_noisy
-                + loss2_clean
-                + loss2_iden
-                + loss2_hidden_clean
             )
         stats.update(loss=loss)
 
