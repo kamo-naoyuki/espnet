@@ -1,10 +1,14 @@
 import dataclasses
 import os
+import pickle
 import socket
+import struct
 from typing import Optional
 
 import torch
 import torch.distributed
+
+from espnet2.torch_utils.device_funcs import to_device
 
 
 @dataclasses.dataclass
@@ -366,3 +370,76 @@ def get_num_nodes(prior=None, launcher: str = None) -> Optional[int]:
     else:
         # prior is None -> NUM_NODES = 1
         return int(os.environ.get("WORLD_SIZE", 1))
+
+
+def all_gather_list(data, group=None, max_size=16384):
+    """Gathers arbitrary data from all nodes into a list.
+
+    Similar to :func:`~torch.distributed.all_gather` but for arbitrary Python
+    data. Note that *data* must be picklable.
+
+    This function is copied from
+    https://github.com/pytorch/fairseq/blob/master/fairseq/distributed_utils.py
+
+    Args:
+        data (Any): data from the local worker to be gathered on other workers
+        group (optional): group of the collective
+        max_size (int, optional): maximum size of the data to be gathered
+            across workers
+
+    """
+    if group is None:
+        group = torch.distributed.group.WORLD
+    rank = torch.distributed.get_rank()
+    world_size = torch.distributed.get_world_size()
+
+    buffer_size = max_size * world_size
+    if (
+        not hasattr(all_gather_list, "_buffer")
+        or all_gather_list._buffer.numel() < buffer_size
+    ):
+        all_gather_list._buffer = torch.cuda.ByteTensor(buffer_size)
+        all_gather_list._cpu_buffer = torch.ByteTensor(max_size).pin_memory()
+    buffer = all_gather_list._buffer
+    buffer.zero_()
+    cpu_buffer = all_gather_list._cpu_buffer
+
+    data = to_device(data, "cpu")
+    enc = pickle.dumps(data)
+    enc_size = len(enc)
+    header_size = 4  # size of header that contains the length of the encoded data
+    size = header_size + enc_size
+    if size > max_size:
+        raise ValueError(
+            "encoded data size ({}) exceeds max_size ({})".format(size, max_size)
+        )
+
+    header = struct.pack(">I", enc_size)
+    cpu_buffer[:size] = torch.ByteTensor(list(header + enc))
+    start = rank * max_size
+    buffer[start : start + size].copy_(cpu_buffer[:size])
+
+    torch.distributed.all_reduce(buffer, group=group)
+
+    buffer = buffer.cpu()
+    try:
+        result = []
+        for i in range(world_size):
+            out_buffer = buffer[i * max_size : (i + 1) * max_size]
+            (enc_size,) = struct.unpack(">I", bytes(out_buffer[:header_size].tolist()))
+            if enc_size > 0:
+                result.append(
+                    pickle.loads(
+                        bytes(out_buffer[header_size : header_size + enc_size].tolist())
+                    )
+                )
+        return result
+    except pickle.UnpicklingError:
+        raise Exception(
+            "Unable to unpickle data from other workers. all_gather_list requires all "
+            "workers to enter the function together, so this error usually indicates "
+            "that the workers have fallen out of sync somehow. Workers can fall out of "
+            "sync if one of them runs out of memory, or if there are other conditions "
+            "in your training script that can cause one worker to finish an epoch "
+            "while other workers are still iterating over their portions of the data. "
+        )

@@ -28,9 +28,9 @@ from espnet2.schedulers.abs_scheduler import AbsScheduler
 from espnet2.schedulers.abs_scheduler import AbsValEpochStepScheduler
 from espnet2.torch_utils.add_gradient_noise import add_gradient_noise
 from espnet2.torch_utils.device_funcs import to_device
-from espnet2.torch_utils.recursive_op import recursive_average
 from espnet2.torch_utils.set_all_random_seed import set_all_random_seed
 from espnet2.train.abs_espnet_model import AbsESPnetModel
+from espnet2.train.distributed_utils import all_gather_list
 from espnet2.train.distributed_utils import DistributedOption
 from espnet2.train.reporter import Reporter
 from espnet2.train.reporter import SubReporter
@@ -146,7 +146,6 @@ class Trainer:
             logging.warning(
                 f"The training has already reached at max_epoch: {start_epoch}"
             )
-
         if distributed_option.distributed:
             dp_model = torch.nn.parallel.DistributedDataParallel(
                 model,
@@ -163,6 +162,7 @@ class Trainer:
                     else None
                 ),
             )
+
         elif distributed_option.ngpu > 1:
             dp_model = torch.nn.parallel.DataParallel(
                 model,
@@ -381,15 +381,12 @@ class Trainer:
             with autocast(scaler is not None):
                 with reporter.measure_time("forward_time"):
                     loss, stats, weight = model(**batch)
-                stats = {k: v for k, v in stats.items() if v is not None}
                 if ngpu > 1 or distributed:
                     # Apply weighted averaging for loss and stats
                     loss = (loss * weight.type(loss.dtype)).sum()
-
-                    # if distributed, this method can also apply all_reduce()
-                    stats, weight = recursive_average(stats, weight, distributed)
-
-                    # Now weight is summation over all workers
+                    stats, weight = cls.calc_weighted_average(
+                        stats, weight, distributed
+                    )
                     loss /= weight
                 if distributed:
                     # NOTE(kamo): Multiply world_size because DistributedDataParallel
@@ -398,6 +395,7 @@ class Trainer:
 
                 loss /= accum_grad
 
+            stats = {k: v for k, v in stats.items() if v is not None}
             reporter.register(stats, weight)
 
             with reporter.measure_time("backward_time"):
@@ -494,6 +492,48 @@ class Trainer:
 
         return all_steps_are_invalid
 
+    @staticmethod
+    def calc_weighted_average(
+        stats: Dict[str, torch.Tensor], weight: torch.Tensor, distributed: bool
+    ):
+        if distributed:
+            stats_list = all_gather_list(stats)
+            weight_list = [
+                torch.empty_like(weight)
+                for _ in range(torch.distributed.get_world_size())
+            ]
+            torch.distributed.all_gather(weight_list, weight)
+            weight_list = [w.cpu() for w in weight_list]
+        else:
+            stats_list = [stats]
+            weight_list = [weight]
+
+        # Get the union of keys
+        keys = set.union(*[set(s) for s in stats_list])
+        ret_stats = {k: None for k in keys}
+        weight_dict = {k: None for k in keys}
+
+        for stats, weight in zip(stats_list, weight_list):
+            for k in keys:
+                if k not in stats or stats[k] is None:
+                    pass
+                else:
+                    assert isinstance(stats[k], torch.Tensor), type(stats[k])
+                    assert stats[k].dim() == 1, stats[k].size()
+                    if ret_stats[k] is None:
+                        ret_stats[k] = 0.0
+                        weight_dict[k] = 0.0
+                    ret_stats[k] += (weight * stats[k]).sum()
+                    weight_dict[k] += weight.sum()
+
+        for k in keys:
+            if ret_stats[k] is not None:
+                ret_stats[k] /= weight_dict[k]
+
+        # Now weight is summation over all workers
+        weight = sum(w.sum() for w in weight_list)
+        return ret_stats, weight
+
     @classmethod
     @torch.no_grad()
     def validate_one_epoch(
@@ -527,9 +567,9 @@ class Trainer:
             _, stats, weight = model(**batch)
             if ngpu > 1 or distributed:
                 # Apply weighted averaging for stats.
-                # if distributed, this method can also apply all_reduce()
-                stats, weight = recursive_average(stats, weight, distributed)
+                stats, weight = cls.calc_weighted_average(stats, weight, distributed)
 
+            stats = {k: v for k, v in stats.items() if v is not None}
             reporter.register(stats, weight)
             reporter.next()
 
