@@ -15,24 +15,27 @@ dt05_real_beamformit_2mics dt05_simu_beamformit_2mics et05_real_beamformit_2mics
 dt05_real_beamformit_5mics dt05_simu_beamformit_5mics et05_real_beamformit_5mics et05_simu_beamformit_5mics \
 "
 
-asr_config=conf/train_asr_rnn.yaml
+asr_config=conf/tuning/train_asr_transformer3.yaml
 inference_config=conf/decode_asr_rnn.yaml
-lm_config=conf/train_lm.yaml
+lm_config=conf/tuning/train_lm_transformer.yaml
 
 
 use_word_lm=false
 word_vocab_size=65000
+speed_perturb_factors="0.9 1.0 1.1"
 
 ./asr.sh                                   \
     --lang en \
+    --ngpu 4 \
     --nlsyms_txt data/nlsyms.txt           \
     --token_type char                      \
-    --feats_type fbank_pitch               \
+    --feats_type raw \
     --asr_config "${asr_config}"           \
     --inference_config "${inference_config}"     \
     --lm_config "${lm_config}"             \
     --use_word_lm ${use_word_lm}           \
     --word_vocab_size ${word_vocab_size}   \
+    --speed_perturb_factors "${speed_perturb_factors}" \
     --train_set "${train_set}"             \
     --valid_set "${valid_set}"             \
     --test_sets "${test_sets}"             \
