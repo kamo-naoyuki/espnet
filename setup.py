@@ -46,7 +46,6 @@ requirements = {
         "nara_wpe>=0.0.5",
         "torch_complex",
         "pytorch_wpe",
-        "ci_sdr",
     ],
     "recipe": [
         "espnet_model_zoo",
@@ -88,6 +87,7 @@ requirements = {
 try:
     # NOTE(kamo): These packages are not listed if installing from the PyPI server
     import torch
+    requirements["install"].append("ci_sdr")
 
     if LooseVersion(torch.__version__) >= LooseVersion("1.1.0"):
         requirements["install"].append("torch_optimizer")

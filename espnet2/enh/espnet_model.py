@@ -6,7 +6,6 @@ from typing import Dict
 from typing import Optional
 from typing import Tuple
 
-import ci_sdr
 import torch
 from typeguard import check_argument_types
 
@@ -568,6 +567,7 @@ class ESPnetEnhancementModel(AbsESPnetModel):
             loss: (Batch,)
         """
         assert ref.shape == inf.shape, (ref.shape, inf.shape)
+        import ci_sdr
         return ci_sdr.pt.ci_sdr_loss(inf, ref, compute_permutation=False)
 
     @staticmethod
