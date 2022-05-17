@@ -15,12 +15,12 @@ espnet2.diar.espnet_model
     :show-inheritance:
 
 
-.. _espnet2.diar.abs_diar:
+.. _espnet2.diar.label_processor:
 
-espnet2.diar.abs_diar
----------------------
+espnet2.diar.label_processor
+----------------------------
 
-.. automodule:: espnet2.diar.abs_diar
+.. automodule:: espnet2.diar.label_processor
     :members:
     :undoc-members:
     :show-inheritance:
@@ -37,23 +37,23 @@ espnet2.diar.__init__
     :show-inheritance:
 
 
-.. _espnet2.diar.label_processor:
+.. _espnet2.diar.abs_diar:
 
-espnet2.diar.label_processor
-----------------------------
+espnet2.diar.abs_diar
+---------------------
 
-.. automodule:: espnet2.diar.label_processor
+.. automodule:: espnet2.diar.abs_diar
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-.. _espnet2.diar.attractor.rnn_attractor:
+.. _espnet2.diar.attractor.abs_attractor:
 
-espnet2.diar.attractor.rnn_attractor
+espnet2.diar.attractor.abs_attractor
 ------------------------------------
 
-.. automodule:: espnet2.diar.attractor.rnn_attractor
+.. automodule:: espnet2.diar.attractor.abs_attractor
     :members:
     :undoc-members:
     :show-inheritance:
@@ -70,12 +70,12 @@ espnet2.diar.attractor.__init__
     :show-inheritance:
 
 
-.. _espnet2.diar.attractor.abs_attractor:
+.. _espnet2.diar.attractor.rnn_attractor:
 
-espnet2.diar.attractor.abs_attractor
+espnet2.diar.attractor.rnn_attractor
 ------------------------------------
 
-.. automodule:: espnet2.diar.attractor.abs_attractor
+.. automodule:: espnet2.diar.attractor.rnn_attractor
     :members:
     :undoc-members:
     :show-inheritance:
